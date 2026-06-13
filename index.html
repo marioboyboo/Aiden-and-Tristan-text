@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Aiden and Tristan Chat</title>
+    <title>Tristan Text Chat</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
@@ -42,6 +42,37 @@
         }
         button:hover { background-color: #4543b3; }
         
+        /* Saved Rooms Styles */
+        .saved-rooms-section {
+            margin-top: 15px;
+            text-align: left;
+            border-top: 1px solid #eee;
+            padding-top: 15px;
+        }
+        .saved-rooms-section h4 {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+        .room-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .room-tag {
+            background: #eef0f6;
+            color: #5856d6;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 13px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: background 0.2s;
+        }
+        .room-tag:hover {
+            background: #e1e4f5;
+        }
+
         /* Chat View Styles */
         #chat-view { display: none; flex-direction: column; height: 500px; text-align: left; }
         #messages {
@@ -67,18 +98,27 @@
         .chat-input-area input { margin: 0; flex: 1; }
         .chat-input-area button { margin: 0; width: auto; padding: 0 20px; }
     </style>
+    <!-- Scaledrone JavaScript API referenced via Screenshot 2026-06-12 213127.png config -->
     <script src="https://cdn.scaledrone.com/scaledrone.min.js"></script>
 </head>
 <body>
 
 <div class="container">
+    <!-- Screen 1: Join / Create Room -->
     <div id="login-view">
         <h2>Join Chat Room</h2>
-        <input type="text" id="username-input" placeholder="Enter your name (e.g., Aiden)" required>
+        <input type="text" id="username-input" placeholder="Enter your name" required>
         <input type="text" id="room-input" placeholder="Enter Room Code (e.g., secret123)" required>
         <button onclick="joinRoom()">Connect & Join</button>
+
+        <!-- Saved Rooms History List -->
+        <div class="saved-rooms-section" id="saved-section" style="display: none;">
+            <h4>Your Saved Rooms:</h4>
+            <div class="room-tags" id="saved-rooms-list"></div>
+        </div>
     </div>
 
+    <!-- Screen 2: The Chat Interface -->
     <div id="chat-view">
         <div class="room-header" id="room-title">Room: </div>
         <div id="messages"></div>
@@ -90,12 +130,17 @@
 </div>
 
 <script>
-    // Your Scaledrone Channel ID from the screenshot
+    // Channel ID verified from Screenshot 2026-06-12 213127.png
     const CLIENT_ID = 'Xj9aMZvB6pZOVHuz'; 
     let drone = null;
     let roomName = '';
     let username = '';
     let room = null;
+
+    // Load saved rooms when the page opens
+    document.addEventListener('DOMContentLoaded', () => {
+        displaySavedRooms();
+    });
 
     function joinRoom() {
         username = document.getElementById('username-input').value.trim();
@@ -106,26 +151,25 @@
             return;
         }
 
-        // Scaledrone requires room names to start with 'observable-' to track user data/presence
+        // Save room code to history
+        saveRoomCode(roomCode);
+
+        // Scaledrone room requirement
         roomName = 'observable-' + roomCode;
 
-        // Initialize Scaledrone connection
+        // Initialize connection
         drone = new Scaledrone(CLIENT_ID, {
             data: { name: username }
         });
 
         drone.on('open', error => {
-            if (error) {
-                return console.error(error);
-            }
-            console.log('Successfully connected to Scaledrone');
+            if (error) return console.error(error);
             
             // Switch UI views
             document.getElementById('login-view').style.display = 'none';
             document.getElementById('chat-view').style.display = 'flex';
             document.getElementById('room-title').innerText = `Logged in as: ${username} | Room: ${roomCode}`;
 
-            // Subscribe to the chosen room
             setupRoom();
         });
 
@@ -135,21 +179,11 @@
     function setupRoom() {
         room = drone.subscribe(roomName);
 
-        room.on('open', error => {
-            if (error) {
-                console.error(error);
-            } else {
-                console.log('Successfully joined room');
-            }
-        });
-
-        // Listen for incoming messages
         room.on('message', message => {
             const { data, member } = message;
             if (member) {
                 displayMessage(data.text, member.clientData.name, member.id === drone.clientId);
             } else {
-                // Message sent from the server/webhook dashboard
                 displayMessage(data.text, 'Server', false);
             }
         });
@@ -158,10 +192,8 @@
     function sendMessage() {
         const msgInput = document.getElementById('message-input');
         const text = msgInput.value.trim();
-        
         if (text === '') return;
 
-        // Publish message to the current room
         drone.publish({
             room: roomName,
             message: { text: text }
@@ -176,20 +208,44 @@
         
         messageEl.classList.add('message');
         messageEl.classList.add(isLocal ? 'local' : 'remote');
-        
-        // Formats message as "Name: Hello!"
         messageEl.innerText = `${sender}: ${text}`;
         
         messagesDiv.appendChild(messageEl);
-        // Auto scroll to the bottom of the chat
         messagesDiv.scrollTop = messagesDiv.scrollHeight;
     }
 
-    // Allows pressing 'Enter' to send a message
-    function checkEnter(event) {
-        if (event.key === 'Enter') {
-            sendMessage();
+    // Storage logic to remember the room codes
+    function saveRoomCode(code) {
+        let rooms = JSON.parse(localStorage.getItem('chat_rooms')) || [];
+        if (!rooms.includes(code)) {
+            rooms.push(code);
+            localStorage.setItem('chat_rooms', JSON.stringify(rooms));
         }
+    }
+
+    function displaySavedRooms() {
+        const rooms = JSON.parse(localStorage.getItem('chat_rooms')) || [];
+        const section = document.getElementById('saved-section');
+        const listDiv = document.getElementById('saved-rooms-list');
+        
+        if (rooms.length > 0) {
+            section.style.display = 'block';
+            listDiv.innerHTML = '';
+            rooms.forEach(roomCode => {
+                const tag = document.createElement('span');
+                tag.className = 'room-tag';
+                tag.innerText = roomCode;
+                // Clicking a tag fills out the box automatically
+                tag.onclick = () => {
+                    document.getElementById('room-input').value = roomCode;
+                };
+                listDiv.appendChild(tag);
+            });
+        }
+    }
+
+    function checkEnter(event) {
+        if (event.key === 'Enter') sendMessage();
     }
 </script>
 
