@@ -3,100 +3,251 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tristan Text Chat</title>
+    <title>Sleek Chat</title>
     <style>
+        :root {
+            --bg-main: #0f172a;
+            --bg-card: #1e293b;
+            --bg-input: #334155;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --accent: #6366f1;
+            --accent-hover: #4f46e5;
+            --msg-local: #312e81;
+            --msg-remote: #334155;
+            --danger: #ef4444;
+            --danger-hover: #dc2626;
+        }
+
         * { box-sizing: border-box; margin: 0; padding: 0; }
+        
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f0f2f5;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-main);
+            color: var(--text-main);
             display: flex;
             justify-content: center;
             align-items: center;
             height: 100vh;
+            padding: 20px;
         }
+
         .container {
-            background: white;
-            padding: 25px;
-            border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            background: var(--bg-card);
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.3);
             width: 100%;
-            max-width: 450px;
+            max-width: 480px;
+            transition: all 0.3s ease;
+        }
+
+        h2 { 
+            font-size: 24px; 
+            font-weight: 700; 
+            margin-bottom: 24px; 
             text-align: center;
+            letter-spacing: -0.5px;
         }
-        h2 { color: #333; margin-bottom: 20px; }
-        input, button {
+
+        input {
             width: 100%;
-            padding: 12px;
-            margin: 10px 0;
-            border-radius: 8px;
-            border: 1px solid #ccc;
-            font-size: 16px;
+            padding: 14px 16px;
+            margin: 8px 0 16px 0;
+            border-radius: 10px;
+            border: 1px solid transparent;
+            background-color: var(--bg-input);
+            color: var(--text-main);
+            font-size: 15px;
+            outline: none;
+            transition: border-color 0.2s;
         }
+
+        input:focus {
+            border-color: var(--accent);
+        }
+
+        input::placeholder {
+            color: var(--text-muted);
+        }
+
+        label {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
         button {
-            background-color: #5856d6;
-            color: white;
+            width: 100%;
+            padding: 14px;
+            border-radius: 10px;
             border: none;
+            font-size: 15px;
+            font-weight: 600;
             cursor: pointer;
-            font-weight: bold;
-            transition: background 0.2s;
+            transition: all 0.2s ease;
         }
-        button:hover { background-color: #4543b3; }
+
+        .btn-primary {
+            background-color: var(--accent);
+            color: white;
+        }
+
+        .btn-primary:hover { 
+            background-color: var(--accent-hover); 
+        }
+
+        .btn-danger {
+            background-color: transparent;
+            color: var(--text-muted);
+            border: 1px solid var(--bg-input);
+            padding: 8px 14px;
+            width: auto;
+            font-size: 13px;
+            border-radius: 8px;
+        }
+
+        .btn-danger:hover {
+            background-color: var(--danger);
+            color: white;
+            border-color: var(--danger);
+        }
         
-        /* Saved Rooms Styles */
+        /* Saved Rooms Section */
         .saved-rooms-section {
-            margin-top: 15px;
-            text-align: left;
-            border-top: 1px solid #eee;
-            padding-top: 15px;
+            margin-top: 24px;
+            border-top: 1px solid var(--bg-input);
+            padding-top: 20px;
         }
+
         .saved-rooms-section h4 {
-            color: #666;
-            font-size: 14px;
-            margin-bottom: 8px;
+            color: var(--text-muted);
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
         }
+
         .room-tags {
             display: flex;
             flex-wrap: wrap;
             gap: 8px;
         }
+
         .room-tag {
-            background: #eef0f6;
-            color: #5856d6;
-            padding: 6px 12px;
+            background: var(--bg-input);
+            color: var(--text-main);
+            padding: 6px 14px;
             border-radius: 20px;
             font-size: 13px;
             cursor: pointer;
             font-weight: 500;
-            transition: background 0.2s;
-        }
-        .room-tag:hover {
-            background: #e1e4f5;
+            transition: background 0.2s, transform 0.1s;
         }
 
-        /* Chat View Styles */
-        #chat-view { display: none; flex-direction: column; height: 500px; text-align: left; }
+        .room-tag:hover {
+            background: var(--accent);
+            transform: translateY(-1px);
+        }
+
+        /* Chat View Interface */
+        #chat-view { 
+            display: none; 
+            flex-direction: column; 
+            height: 550px; 
+        }
+
+        .chat-header { 
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--bg-input);
+            margin-bottom: 16px;
+        }
+
+        .room-info {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .room-info .room-id {
+            font-size: 16px;
+            font-weight: 700;
+        }
+
+        .room-info .user-id {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
         #messages {
             flex: 1;
-            border: 1px solid #e5e5e5;
-            border-radius: 8px;
-            padding: 15px;
+            border-radius: 12px;
+            padding: 16px;
             overflow-y: auto;
-            background: #fafafa;
-            margin-bottom: 10px;
+            background: rgba(15, 23, 42, 0.4);
+            margin-bottom: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
         }
+
         .message {
-            margin-bottom: 12px;
-            padding: 8px 12px;
-            border-radius: 8px;
-            max-width: 80%;
+            padding: 10px 14px;
+            border-radius: 12px;
+            max-width: 85%;
             word-wrap: break-word;
+            font-size: 15px;
+            line-height: 1.4;
         }
-        .message.local { background-color: #d1e7dd; margin-left: auto; }
-        .message.remote { background-color: #e2e3e5; }
-        .room-header { font-size: 14px; color: #666; margin-bottom: 10px; font-weight: 600; }
-        .chat-input-area { display: flex; gap: 8px; }
-        .chat-input-area input { margin: 0; flex: 1; }
-        .chat-input-area button { margin: 0; width: auto; padding: 0 20px; }
+
+        .message.local { 
+            background-color: var(--msg-local); 
+            color: #fff;
+            align-self: flex-end;
+            border-bottom-right-radius: 2px;
+        }
+
+        .message.remote { 
+            background-color: var(--msg-remote); 
+            color: var(--text-main);
+            align-self: flex-start;
+            border-bottom-left-radius: 2px;
+        }
+
+        .message-sender {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .message.local .message-sender {
+            color: #a5b4fc;
+        }
+
+        .chat-input-area { 
+            display: flex; 
+            gap: 10px; 
+            align-items: center;
+        }
+
+        .chat-input-area input { 
+            margin: 0; 
+            flex: 1; 
+        }
+
+        .chat-input-area button { 
+            margin: 0; 
+            width: auto; 
+            padding: 14px 24px; 
+        }
     </style>
     <!-- Scaledrone JavaScript API referenced via Screenshot 2026-06-12 213127.png config -->
     <script src="https://cdn.scaledrone.com/scaledrone.min.js"></script>
@@ -104,27 +255,40 @@
 <body>
 
 <div class="container">
-    <!-- Screen 1: Join / Create Room -->
+    <!-- Screen 1: Lobby / Join Room -->
     <div id="login-view">
-        <h2>Join Chat Room</h2>
-        <input type="text" id="username-input" placeholder="Enter your name" required>
-        <input type="text" id="room-input" placeholder="Enter Room Code (e.g., secret123)" required>
-        <button onclick="joinRoom()">Connect & Join</button>
+        <h2>Welcome</h2>
+        
+        <label for="username-input">Your Name</label>
+        <input type="text" id="username-input" placeholder="Enter your name" autocomplete="off" required>
+        
+        <label for="room-input">Room Code</label>
+        <input type="text" id="room-input" placeholder="Enter secret room code" autocomplete="off" required>
+        
+        <button class="btn-primary" onclick="joinRoom()">Connect & Join</button>
 
         <!-- Saved Rooms History List -->
         <div class="saved-rooms-section" id="saved-section" style="display: none;">
-            <h4>Your Saved Rooms:</h4>
+            <h4>Quick Access Rooms</h4>
             <div class="room-tags" id="saved-rooms-list"></div>
         </div>
     </div>
 
     <!-- Screen 2: The Chat Interface -->
     <div id="chat-view">
-        <div class="room-header" id="room-title">Room: </div>
+        <div class="chat-header">
+            <div class="room-info">
+                <span class="room-id" id="room-title">Room: ---</span>
+                <span class="user-id" id="user-title">As: ---</span>
+            </div>
+            <button class="btn-danger" onclick="leaveRoom()">Leave Room</button>
+        </div>
+        
         <div id="messages"></div>
+        
         <div class="chat-input-area">
-            <input type="text" id="message-input" placeholder="Type a message..." onkeypress="checkEnter(event)">
-            <button onclick="sendMessage()">Send</button>
+            <input type="text" id="message-input" placeholder="Message room..." autocomplete="off" onkeypress="checkEnter(event)">
+            <button class="btn-primary" onclick="sendMessage()">Send</button>
         </div>
     </div>
 </div>
@@ -147,17 +311,17 @@
         const roomCode = document.getElementById('room-input').value.trim();
 
         if (!username || !roomCode) {
-            alert('Please enter both a username and a room code.');
+            alert('Please fill out your name and a room code.');
             return;
         }
 
-        // Save room code to history
+        // Save room code to local storage history
         saveRoomCode(roomCode);
 
-        // Scaledrone room requirement
+        // Scaledrone dynamic room identifier mapping
         roomName = 'observable-' + roomCode;
 
-        // Initialize connection
+        // Initialize active connection
         drone = new Scaledrone(CLIENT_ID, {
             data: { name: username }
         });
@@ -165,10 +329,11 @@
         drone.on('open', error => {
             if (error) return console.error(error);
             
-            // Switch UI views
+            // Seamless UI Switch transition
             document.getElementById('login-view').style.display = 'none';
             document.getElementById('chat-view').style.display = 'flex';
-            document.getElementById('room-title').innerText = `Logged in as: ${username} | Room: ${roomCode}`;
+            document.getElementById('room-title').innerText = `Room: ${roomCode}`;
+            document.getElementById('user-title').innerText = `Logged in as ${username}`;
 
             setupRoom();
         });
@@ -184,7 +349,7 @@
             if (member) {
                 displayMessage(data.text, member.clientData.name, member.id === drone.clientId);
             } else {
-                displayMessage(data.text, 'Server', false);
+                displayMessage(data.text, 'System', false);
             }
         });
     }
@@ -204,17 +369,39 @@
 
     function displayMessage(text, sender, isLocal) {
         const messagesDiv = document.getElementById('messages');
-        const messageEl = document.createElement('div');
+        const messageWrapper = document.createElement('div');
+        messageWrapper.classList.add('message', isLocal ? 'local' : 'remote');
         
-        messageEl.classList.add('message');
-        messageEl.classList.add(isLocal ? 'local' : 'remote');
-        messageEl.innerText = `${sender}: ${text}`;
+        // Structure name on top, text underneath for a sleeker presentation
+        messageWrapper.innerHTML = `<div class="message-sender">${sender}</div><div>${text}</div>`;
         
-        messagesDiv.appendChild(messageEl);
+        messagesDiv.appendChild(messageWrapper);
         messagesDiv.scrollTop = messagesDiv.scrollHeight;
     }
 
-    // Storage logic to remember the room codes
+    // New Functionality: Safely unsubscribe and tear down Scaledrone connection
+    function leaveRoom() {
+        if (room) {
+            room.unsubscribe();
+            room = null;
+        }
+        if (drone) {
+            drone.close();
+            drone = null;
+        }
+
+        // Clear out old message logs completely
+        document.getElementById('messages').innerHTML = '';
+        document.getElementById('message-input').value = '';
+
+        // Swap interface back to the entry menu view safely
+        document.getElementById('chat-view').style.display = 'none';
+        document.getElementById('login-view').style.display = 'block';
+        
+        // Refresh the saved room tags list in case changes happened
+        displaySavedRooms();
+    }
+
     function saveRoomCode(code) {
         let rooms = JSON.parse(localStorage.getItem('chat_rooms')) || [];
         if (!rooms.includes(code)) {
@@ -235,7 +422,6 @@
                 const tag = document.createElement('span');
                 tag.className = 'room-tag';
                 tag.innerText = roomCode;
-                // Clicking a tag fills out the box automatically
                 tag.onclick = () => {
                     document.getElementById('room-input').value = roomCode;
                 };
