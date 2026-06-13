@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sleek Chat with History Enabled</title>
+    <title>Sleek Chat with Name Memory & History</title>
     <style>
         :root {
             --bg-main: #0f172a;
@@ -235,6 +235,7 @@
 </div>
 
 <div class="container">
+    <!-- Screen 1: Lobby / Join Room -->
     <div id="login-view">
         <h2>Welcome</h2>
         
@@ -249,12 +250,14 @@
         
         <button class="btn-primary" onclick="joinRoom()">Connect & Join</button>
 
+        <!-- Saved Rooms History List -->
         <div class="saved-rooms-section" id="saved-section" style="display: none;">
             <h4>Quick Access Rooms</h4>
             <div class="room-tags" id="saved-rooms-list"></div>
         </div>
     </div>
 
+    <!-- Screen 2: The Chat Interface -->
     <div id="chat-view">
         <div class="chat-header">
             <div class="room-info">
@@ -338,7 +341,10 @@
         }
 
         requestNotificationPermission();
-        saveRoomData(roomCode, currentCustomRoomName);
+        
+        // UPGRADED: Passing down username so it links uniquely to this room code data structure
+        saveRoomData(roomCode, currentCustomRoomName, username);
+        
         roomName = 'observable-' + roomCode;
 
         drone = new Scaledrone(CLIENT_ID, { data: { name: username } });
@@ -354,12 +360,10 @@
     }
 
     function setupRoom() {
-        // Request history configuration parameter inside subscription options
         room = drone.subscribe(roomName, {
-            historyCount: 50 // Tells Scaledrone to fetch up to 50 previous messages
+            historyCount: 50 
         });
 
-        // NEW: Handles loading old messages from Scaledrone history
         room.on('history_message', message => {
             const { data, member } = message;
             if (member) {
@@ -370,7 +374,6 @@
             }
         });
 
-        // Handles live ongoing chat messages
         room.on('message', message => {
             const { data, member } = message;
             if (member) {
@@ -447,22 +450,23 @@
         displaySavedRooms();
     }
 
-    function saveRoomData(code, displayName) {
-        let rooms = JSON.parse(localStorage.getItem('chat_rooms_v2')) || [];
+    // UPGRADED: Storage schema structure version 3 updates to accept and track 'savedName' values
+    function saveRoomData(code, displayName, savedName) {
+        let rooms = JSON.parse(localStorage.getItem('chat_rooms_v3')) || [];
         rooms = rooms.filter(r => r.code !== code);
-        rooms.unshift({ code: code, name: displayName });
-        localStorage.setItem('chat_rooms_v2', JSON.stringify(rooms));
+        rooms.unshift({ code: code, name: displayName, username: savedName });
+        localStorage.setItem('chat_rooms_v3', JSON.stringify(rooms));
     }
 
     function deleteRoomData(code) {
-        let rooms = JSON.parse(localStorage.getItem('chat_rooms_v2')) || [];
+        let rooms = JSON.parse(localStorage.getItem('chat_rooms_v3')) || [];
         rooms = rooms.filter(r => r.code !== code);
-        localStorage.setItem('chat_rooms_v2', JSON.stringify(rooms));
+        localStorage.setItem('chat_rooms_v3', JSON.stringify(rooms));
         displaySavedRooms();
     }
 
     function displaySavedRooms() {
-        const rooms = JSON.parse(localStorage.getItem('chat_rooms_v2')) || [];
+        const rooms = JSON.parse(localStorage.getItem('chat_rooms_v3')) || [];
         const section = document.getElementById('saved-section');
         const listDiv = document.getElementById('saved-rooms-list');
         
@@ -475,10 +479,14 @@
                 const tag = document.createElement('div');
                 tag.className = 'room-tag';
                 tag.innerHTML = `<span>${roomObj.name}</span> <span class="tag-code">${roomObj.code}</span>`;
+                
+                // UPGRADED: Auto-populates the unique username assigned to this specific room index
                 tag.onclick = () => {
                     document.getElementById('room-input').value = roomObj.code;
                     document.getElementById('room-name-input').value = roomObj.name;
+                    document.getElementById('username-input').value = roomObj.username || '';
                 };
+                
                 const delBtn = document.createElement('button');
                 delBtn.className = 'btn-delete-tag';
                 delBtn.innerHTML = '&times;';
