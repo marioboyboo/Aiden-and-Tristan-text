@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sleek Chat with Notifications</title>
+    <title>Sleek Chat with Reliable Notifications</title>
     <style>
         :root {
             --bg-main: #0f172a;
@@ -30,6 +30,8 @@
             align-items: center;
             height: 100vh;
             padding: 20px;
+            position: relative;
+            overflow: hidden;
         }
 
         .container {
@@ -40,6 +42,7 @@
             width: 100%;
             max-width: 480px;
             transition: all 0.3s ease;
+            z-index: 10;
         }
 
         h2 { 
@@ -63,13 +66,8 @@
             transition: border-color 0.2s;
         }
 
-        input:focus {
-            border-color: var(--accent);
-        }
-
-        input::placeholder {
-            color: var(--text-muted);
-        }
+        input:focus { border-color: var(--accent); }
+        input::placeholder { color: var(--text-muted); }
 
         label {
             font-size: 13px;
@@ -90,14 +88,8 @@
             transition: all 0.2s ease;
         }
 
-        .btn-primary {
-            background-color: var(--accent);
-            color: white;
-        }
-
-        .btn-primary:hover { 
-            background-color: var(--accent-hover); 
-        }
+        .btn-primary { background-color: var(--accent); color: white; }
+        .btn-primary:hover { background-color: var(--accent-hover); }
 
         .btn-danger {
             background-color: transparent;
@@ -108,12 +100,7 @@
             font-size: 13px;
             border-radius: 8px;
         }
-
-        .btn-danger:hover {
-            background-color: var(--danger);
-            color: white;
-            border-color: var(--danger);
-        }
+        .btn-danger:hover { background-color: var(--danger); color: white; border-color: var(--danger); }
         
         /* Saved Rooms Section */
         .saved-rooms-section {
@@ -131,17 +118,8 @@
             margin-bottom: 12px;
         }
 
-        .room-tags {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-
-        .room-tag-container {
-            display: flex;
-            gap: 8px;
-            align-items: center;
-        }
+        .room-tags { display: flex; flex-direction: column; gap: 8px; }
+        .room-tag-container { display: flex; gap: 8px; align-items: center; }
 
         .room-tag {
             background: var(--bg-input);
@@ -158,11 +136,7 @@
             flex: 1;
         }
 
-        .room-tag:hover {
-            background: var(--accent);
-            transform: translateY(-1px);
-        }
-
+        .room-tag:hover { background: var(--accent); transform: translateY(-1px); }
         .room-tag .tag-code {
             font-size: 11px;
             color: var(--text-muted);
@@ -171,12 +145,6 @@
             border-radius: 4px;
         }
 
-        .room-tag:hover .tag-code {
-            color: #fff;
-            background: rgba(253, 253, 253, 0.2);
-        }
-
-        /* Delete Tag Button */
         .btn-delete-tag {
             background: transparent;
             color: var(--text-muted);
@@ -191,19 +159,10 @@
             padding: 0;
             transition: all 0.2s ease;
         }
-
-        .btn-delete-tag:hover {
-            background: rgba(239, 68, 68, 0.15);
-            color: var(--danger);
-            border-color: rgba(239, 68, 68, 0.3);
-        }
+        .btn-delete-tag:hover { background: rgba(239, 68, 68, 0.15); color: var(--danger); border-color: rgba(239, 68, 68, 0.3); }
 
         /* Chat View Interface */
-        #chat-view { 
-            display: none; 
-            flex-direction: column; 
-            height: 550px; 
-        }
+        #chat-view { display: none; flex-direction: column; height: 550px; }
 
         .chat-header { 
             display: flex;
@@ -214,25 +173,9 @@
             margin-bottom: 16px;
         }
 
-        .room-info {
-            display: flex;
-            flex-direction: column;
-            max-width: 70%;
-        }
-
-        .room-info .room-id {
-            font-size: 18px;
-            font-weight: 700;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-
-        .room-info .user-id {
-            font-size: 12px;
-            color: var(--text-muted);
-            margin-top: 2px;
-        }
+        .room-info { display: flex; flex-direction: column; max-width: 70%; }
+        .room-info .room-id { font-size: 18px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .room-info .user-id { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
 
         #messages {
             flex: 1;
@@ -246,62 +189,49 @@
             gap: 10px;
         }
 
-        .message {
-            padding: 10px 14px;
+        .message { padding: 10px 14px; border-radius: 12px; max-width: 85%; word-wrap: break-word; font-size: 15px; line-height: 1.4; }
+        .message.local { background-color: var(--msg-local); color: #fff; align-self: flex-end; border-bottom-right-radius: 2px; }
+        .message.remote { background-color: var(--msg-remote); color: var(--text-main); align-self: flex-start; border-bottom-left-radius: 2px; }
+
+        .message-sender { font-size: 11px; font-weight: 700; color: var(--text-muted); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .message.local .message-sender { color: #a5b4fc; }
+
+        .chat-input-area { display: flex; gap: 10px; align-items: center; }
+        .chat-input-area input { margin: 0; flex: 1; }
+        .chat-input-area button { margin: 0; width: auto; padding: 14px 24px; }
+
+        /* Reliability Fix: Custom Global Notification Banner */
+        .notification-banner {
+            position: absolute;
+            top: -100px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--accent);
+            color: white;
+            padding: 14px 20px;
             border-radius: 12px;
-            max-width: 85%;
-            word-wrap: break-word;
-            font-size: 15px;
-            line-height: 1.4;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            width: calc(100% - 40px);
+            max-width: 440px;
+            z-index: 9999;
+            transition: top 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            cursor: pointer;
         }
-
-        .message.local { 
-            background-color: var(--msg-local); 
-            color: #fff;
-            align-self: flex-end;
-            border-bottom-right-radius: 2px;
-        }
-
-        .message.remote { 
-            background-color: var(--msg-remote); 
-            color: var(--text-main);
-            align-self: flex-start;
-            border-bottom-left-radius: 2px;
-        }
-
-        .message-sender {
-            font-size: 11px;
-            font-weight: 700;
-            color: var(--text-muted);
-            margin-bottom: 4px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .message.local .message-sender {
-            color: #a5b4fc;
-        }
-
-        .chat-input-area { 
-            display: flex; 
-            gap: 10px; 
-            align-items: center;
-        }
-
-        .chat-input-area input { 
-            margin: 0; 
-            flex: 1; 
-        }
-
-        .chat-input-area button { 
-            margin: 0; 
-            width: auto; 
-            padding: 14px 24px; 
-        }
+        .notification-banner.show { top: 20px; }
+        .notification-banner .notif-title { font-weight: 700; font-size: 14px; }
+        .notification-banner .notif-body { font-size: 13px; color: #e0e7ff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     </style>
     <script src="https://cdn.scaledrone.com/scaledrone.min.js"></script>
 </head>
 <body>
+
+<div id="custom-notification" class="notification-banner" onclick="dismissNotification()">
+    <div class="notif-title" id="notif-title">New Message</div>
+    <div class="notif-body" id="notif-body">Hello!</div>
+</div>
 
 <div class="container">
     <div id="login-view">
@@ -314,7 +244,7 @@
         <input type="text" id="room-name-input" placeholder="e.g., Chill Lounge, Gaming" autocomplete="off">
 
         <label for="room-input">Secret Room Code</label>
-        <input type="text" id="room-input" placeholder="Enter connection code (e.g., secret123)" autocomplete="off" required>
+        <input type="text" id="room-input" placeholder="Enter connection code" autocomplete="off" required>
         
         <button class="btn-primary" onclick="joinRoom()">Connect & Join</button>
 
@@ -343,20 +273,36 @@
 </div>
 
 <script>
-    // Channel ID verified from Screenshot 2026-06-12 213127.png
     const CLIENT_ID = 'Xj9aMZvB6pZOVHuz'; 
     let drone = null;
     let roomName = '';
     let username = '';
     let room = null;
     let currentCustomRoomName = '';
+    let notifTimeout = null;
 
-    // Load saved rooms when the page opens
+    // Synthetic audio alert generator (Requires no external audio file assets)
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    function playNotificationSound() {
+        try {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(587.33, audioCtx.currentTime); // D5 note
+            osc.frequency.setValueAtTime(880, audioCtx.currentTime + 0.1);  // A5 note
+            gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+            osc.start(audioCtx.currentTime);
+            osc.stop(audioCtx.currentTime + 0.3);
+        } catch(e) { console.log("Audio play blocked by browser interaction policy"); }
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
         displaySavedRooms();
     });
 
-    // Request desktop notification permissions when joining a room
     function requestNotificationPermission() {
         if ('Notification' in window && Notification.permission === 'default') {
             Notification.requestPermission();
@@ -377,74 +323,86 @@
             currentCustomRoomName = "Room " + roomCode;
         }
 
-        // Ask for permission to show notifications
         requestNotificationPermission();
-
-        // Save room code and custom name to local storage history
         saveRoomData(roomCode, currentCustomRoomName);
-
-        // Scaledrone dynamic room identifier mapping
         roomName = 'observable-' + roomCode;
 
-        // Initialize active connection
-        drone = new Scaledrone(CLIENT_ID, {
-            data: { name: username }
-        });
+        drone = new Scaledrone(CLIENT_ID, { data: { name: username } });
 
         drone.on('open', error => {
             if (error) return console.error(error);
-            
-            // Seamless UI Switch transition
             document.getElementById('login-view').style.display = 'none';
             document.getElementById('chat-view').style.display = 'flex';
             document.getElementById('room-title').innerText = currentCustomRoomName;
             document.getElementById('user-title').innerText = `As ${username} | Code: ${roomCode}`;
-
             setupRoom();
         });
-
-        drone.on('error', error => console.error('Connection error:', error));
     }
 
     function setupRoom() {
         room = drone.subscribe(roomName);
-
         room.on('message', message => {
             const { data, member } = message;
             if (member) {
                 const isLocal = member.id === drone.clientId;
                 displayMessage(data.text, member.clientData.name, isLocal);
                 
-                // Trigger notification if message is from someone else AND tab is hidden/unfocused
-                if (!isLocal && document.hidden) {
-                    triggerNotification(member.clientData.name, data.text);
+                // If message is remote, handle multi-layered alerting mechanisms
+                if (!isLocal) {
+                    playNotificationSound();
+                    
+                    // 1. Try standard Native System Notification (Works on HTTPS desktop)
+                    if (document.hidden) {
+                        triggerSystemNotification(member.clientData.name, data.text);
+                    }
+                    
+                    // 2. Always show the custom In-App Banner if the user is out-of-tab or on mobile
+                    if (document.hidden || mobileNotificationCondition()) {
+                        showCustomBanner(member.clientData.name, data.text);
+                    }
                 }
-            } else {
-                displayMessage(data.text, 'System', false);
             }
         });
     }
 
-    // New Functionality: Trigger OS Desktop notification window alerts
-    function triggerNotification(sender, messageText) {
+    function mobileNotificationCondition() {
+        // Returns true if the user isn't directly scrolling the bottom logs area
+        const msgDiv = document.getElementById('messages');
+        return (msgDiv.scrollHeight - msgDiv.scrollTop - msgDiv.clientHeight > 150);
+    }
+
+    function triggerSystemNotification(sender, messageText) {
         if ('Notification' in window && Notification.permission === 'granted') {
             new Notification(`${sender} in ${currentCustomRoomName}`, {
                 body: messageText,
-                tag: 'chat-msg' // Replaces previous notification so multiple aren't stacked endlessly
+                tag: 'chat-msg'
             });
         }
+    }
+
+    function showCustomBanner(sender, text) {
+        clearTimeout(notifTimeout);
+        document.getElementById('notif-title').innerText = `${sender} (${currentCustomRoomName})`;
+        document.getElementById('notif-body').innerText = text;
+        
+        const banner = document.getElementById('custom-notification');
+        banner.classList.add('show');
+
+        // Automatically hide the alert bubble after 4 seconds
+        notifTimeout = setTimeout(() => {
+            banner.classList.remove('show');
+        }, 4000);
+    }
+
+    function dismissNotification() {
+        document.getElementById('custom-notification').classList.remove('show');
     }
 
     function sendMessage() {
         const msgInput = document.getElementById('message-input');
         const text = msgInput.value.trim();
         if (text === '') return;
-
-        drone.publish({
-            room: roomName,
-            message: { text: text }
-        });
-
+        drone.publish({ room: roomName, message: { text: text } });
         msgInput.value = '';
     }
 
@@ -452,43 +410,24 @@
         const messagesDiv = document.getElementById('messages');
         const messageWrapper = document.createElement('div');
         messageWrapper.classList.add('message', isLocal ? 'local' : 'remote');
-        
         messageWrapper.innerHTML = `<div class="message-sender">${sender}</div><div>${text}</div>`;
-        
         messagesDiv.appendChild(messageWrapper);
         messagesDiv.scrollTop = messagesDiv.scrollHeight;
     }
 
     function leaveRoom() {
-        if (room) {
-            room.unsubscribe();
-            room = null;
-        }
-        if (drone) {
-            drone.close();
-            drone = null;
-        }
-
-        // Clear out old message logs completely
+        if (room) { room.unsubscribe(); room = null; }
+        if (drone) { drone.close(); drone = null; }
         document.getElementById('messages').innerHTML = '';
-        document.getElementById('message-input').value = '';
-        document.getElementById('room-name-input').value = '';
-        currentCustomRoomName = '';
-
-        // Swap interface back to the entry menu view safely
         document.getElementById('chat-view').style.display = 'none';
         document.getElementById('login-view').style.display = 'block';
-        
-        // Refresh the saved room tags list
         displaySavedRooms();
     }
 
     function saveRoomData(code, displayName) {
         let rooms = JSON.parse(localStorage.getItem('chat_rooms_v2')) || [];
-        
         rooms = rooms.filter(r => r.code !== code);
         rooms.unshift({ code: code, name: displayName });
-        
         localStorage.setItem('chat_rooms_v2', JSON.stringify(rooms));
     }
 
@@ -507,42 +446,28 @@
         if (rooms.length > 0) {
             section.style.display = 'block';
             listDiv.innerHTML = '';
-            
             rooms.forEach(roomObj => {
                 const row = document.createElement('div');
                 row.className = 'room-tag-container';
-
                 const tag = document.createElement('div');
                 tag.className = 'room-tag';
                 tag.innerHTML = `<span>${roomObj.name}</span> <span class="tag-code">${roomObj.code}</span>`;
-                
                 tag.onclick = () => {
                     document.getElementById('room-input').value = roomObj.code;
                     document.getElementById('room-name-input').value = roomObj.name;
                 };
-
                 const delBtn = document.createElement('button');
                 delBtn.className = 'btn-delete-tag';
-                delBtn.innerHTML = '&times;'; 
-                delBtn.title = 'Delete saved room';
-                delBtn.onclick = (e) => {
-                    e.stopPropagation(); 
-                    deleteRoomData(roomObj.code);
-                };
-
+                delBtn.innerHTML = '&times;';
+                delBtn.onclick = (e) => { e.stopPropagation(); deleteRoomData(roomObj.code); };
                 row.appendChild(tag);
                 row.appendChild(delBtn);
                 listDiv.appendChild(row);
             });
-        } else {
-            section.style.display = 'none';
-        }
+        } else { section.style.display = 'none'; }
     }
 
-    function checkEnter(event) {
-        if (event.key === 'Enter') sendMessage();
-    }
+    function checkEnter(event) { if (event.key === 'Enter') sendMessage(); }
 </script>
-
 </body>
 </html>
