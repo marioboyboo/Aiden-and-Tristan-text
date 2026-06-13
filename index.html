@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sleek Named Chat</title>
+    <title>Sleek Chat with Room Deletion</title>
     <style>
         :root {
             --bg-main: #0f172a;
@@ -137,6 +137,12 @@
             gap: 8px;
         }
 
+        .room-tag-container {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
         .room-tag {
             background: var(--bg-input);
             color: var(--text-main);
@@ -149,6 +155,7 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            flex: 1;
         }
 
         .room-tag:hover {
@@ -167,6 +174,28 @@
         .room-tag:hover .tag-code {
             color: #fff;
             background: rgba(253, 253, 253, 0.2);
+        }
+
+        /* Delete Tag Button */
+        .btn-delete-tag {
+            background: transparent;
+            color: var(--text-muted);
+            border: 1px solid transparent;
+            width: 38px;
+            height: 38px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            font-size: 18px;
+            padding: 0;
+            transition: all 0.2s ease;
+        }
+
+        .btn-delete-tag:hover {
+            background: rgba(239, 68, 68, 0.15);
+            color: var(--danger);
+            border-color: rgba(239, 68, 68, 0.3);
         }
 
         /* Chat View Interface */
@@ -336,7 +365,6 @@
             return;
         }
 
-        // If they didn't input a custom name, fall back to the code itself
         if (!customRoomName) {
             customRoomName = "Room " + roomCode;
         }
@@ -427,7 +455,6 @@
         displaySavedRooms();
     }
 
-    // Storage update: Saves an object containing both the secret code and display name
     function saveRoomData(code, displayName) {
         let rooms = JSON.parse(localStorage.getItem('chat_rooms_v2')) || [];
         
@@ -440,6 +467,14 @@
         localStorage.setItem('chat_rooms_v2', JSON.stringify(rooms));
     }
 
+    // New functionality: Delete a room from saved history lists
+    function deleteRoomData(code) {
+        let rooms = JSON.parse(localStorage.getItem('chat_rooms_v2')) || [];
+        rooms = rooms.filter(r => r.code !== code);
+        localStorage.setItem('chat_rooms_v2', JSON.stringify(rooms));
+        displaySavedRooms(); // Refresh UI instantly
+    }
+
     function displaySavedRooms() {
         const rooms = JSON.parse(localStorage.getItem('chat_rooms_v2')) || [];
         const section = document.getElementById('saved-section');
@@ -448,7 +483,12 @@
         if (rooms.length > 0) {
             section.style.display = 'block';
             listDiv.innerHTML = '';
+            
             rooms.forEach(roomObj => {
+                // Wrapper container for item row element structuring
+                const row = document.createElement('div');
+                row.className = 'room-tag-container';
+
                 const tag = document.createElement('div');
                 tag.className = 'room-tag';
                 tag.innerHTML = `<span>${roomObj.name}</span> <span class="tag-code">${roomObj.code}</span>`;
@@ -457,8 +497,22 @@
                     document.getElementById('room-input').value = roomObj.code;
                     document.getElementById('room-name-input').value = roomObj.name;
                 };
-                listDiv.appendChild(tag);
+
+                const delBtn = document.createElement('button');
+                delBtn.className = 'btn-delete-tag';
+                delBtn.innerHTML = '&times;'; // Render standard visual clear indicator sign
+                delBtn.title = 'Delete saved room';
+                delBtn.onclick = (e) => {
+                    e.stopPropagation(); // Prevents clicking the row and autofilling inputs
+                    deleteRoomData(roomObj.code);
+                };
+
+                row.appendChild(tag);
+                row.appendChild(delBtn);
+                listDiv.appendChild(row);
             });
+        } else {
+            section.style.display = 'none';
         }
     }
 
