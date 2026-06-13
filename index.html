@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sleek Chat with Name Memory & History</title>
+    <title>Sleek Chat with Photo Sharing</title>
     <style>
         :root {
             --bg-main: #0f172a;
@@ -196,9 +196,40 @@
         .message-sender { font-size: 11px; font-weight: 700; color: var(--text-muted); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
         .message.local .message-sender { color: #a5b4fc; }
 
-        .chat-input-area { display: flex; gap: 10px; align-items: center; }
+        /* Dynamic shared images rendering framework rules */
+        .shared-chat-image {
+            max-width: 100%;
+            max-height: 200px;
+            border-radius: 8px;
+            margin-top: 6px;
+            display: block;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+        .shared-chat-image:hover { opacity: 0.9; }
+
+        .chat-input-area { display: flex; gap: 8px; align-items: center; }
         .chat-input-area input { margin: 0; flex: 1; }
-        .chat-input-area button { margin: 0; width: auto; padding: 14px 24px; }
+        
+        /* Stylized custom image selector clip icon layout */
+        .image-select-btn {
+            width: 46px;
+            height: 46px;
+            background-color: var(--bg-input);
+            color: var(--text-main);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 18px;
+            transition: background 0.2s;
+            flex-shrink: 0;
+        }
+        .image-select-btn:hover { background-color: #475569; }
+        #hidden-file-input { display: none; }
+
+        .chat-input-area button.btn-send { margin: 0; width: auto; padding: 14px 20px; }
 
         /* Notification Toast Preview */
         .notification-toast {
@@ -270,8 +301,12 @@
         <div id="messages"></div>
         
         <div class="chat-input-area">
+            <!-- New: Paperclip button node that opens native file selector triggers -->
+            <label class="image-select-btn" for="hidden-file-input">📷</label>
+            <input type="file" id="hidden-file-input" accept="image/*" onchange="handleImageUpload(event)">
+            
             <input type="text" id="message-input" placeholder="Message room..." autocomplete="off" onkeypress="checkEnter(event)">
-            <button class="btn-primary" onclick="sendMessage()">Send</button>
+            <button class="btn-primary btn-send" onclick="sendMessage()">Send</button>
         </div>
     </div>
 </div>
@@ -341,10 +376,7 @@
         }
 
         requestNotificationPermission();
-        
-        // UPGRADED: Passing down username so it links uniquely to this room code data structure
         saveRoomData(roomCode, currentCustomRoomName, username);
-        
         roomName = 'observable-' + roomCode;
 
         drone = new Scaledrone(CLIENT_ID, { data: { name: username } });
@@ -368,7 +400,7 @@
             const { data, member } = message;
             if (member) {
                 const isLocal = member.id === drone.clientId;
-                displayMessage(data.text, member.clientData.name, isLocal);
+                displayMessage(data.text, member.clientData.name, isLocal, data.image);
             } else {
                 displayMessage(data.text, 'System', false);
             }
@@ -378,19 +410,66 @@
             const { data, member } = message;
             if (member) {
                 const isLocal = member.id === drone.clientId;
-                displayMessage(data.text, member.clientData.name, isLocal);
+                displayMessage(data.text, member.clientData.name, isLocal, data.image);
                 
                 if (!isLocal) {
                     playLoudNotificationSound();
+                    
+                    // Generate specialized message previews if a payload contains an image attachment
+                    let previewContent = data.text || "Sent a photo 📷";
+
                     if (document.hidden) {
-                        triggerSystemNotification(member.clientData.name, data.text);
+                        triggerSystemNotification(member.clientData.name, previewContent);
                     }
                     if (document.hidden || mobileNotificationCondition()) {
-                        showPreviewToast(member.clientData.name, data.text);
+                        showPreviewToast(member.clientData.name, previewContent);
                     }
                 }
             }
         });
+    }
+
+    // New: Processing function that parses images, scales down sizes, and generates base64 targets
+    function handleImageUpload(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const img = new Image();
+            img.onload = function() {
+                // Scaling down the photo dimensions saves bandwidth and fits within Scaledrone message frames
+                const canvas = document.createElement('canvas');
+                let width = img.width;
+                let height = img.height;
+                const max_size = 800; // Limits layout to max 800px width/height
+
+                if (width > height) {
+                    if (width > max_size) { height *= max_size / width; width = max_size; }
+                } else {
+                    if (height > max_size) { width *= max_size / height; height = max_size; }
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+
+                // Export target layout structure directly back into high performance base64 text payload arrays
+                const base64Data = canvas.toDataURL('image/jpeg', 0.7); // 70% quality compression configuration
+                
+                // Ship payload contents across active room nodes
+                drone.publish({
+                    room: roomName,
+                    message: { text: '', image: base64Data }
+                });
+            };
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+        
+        // Reset the file selector component so clicking it again works flawlessly
+        event.target.value = '';
     }
 
     function mobileNotificationCondition() {
@@ -432,11 +511,23 @@
         msgInput.value = '';
     }
 
-    function displayMessage(text, sender, isLocal) {
+    // Upgraded: Accepting an optional base64 image argument inside the standard log generator loop
+    function displayMessage(text, sender, isLocal, base64Image = null) {
         const messagesDiv = document.getElementById('messages');
         const messageWrapper = document.createElement('div');
         messageWrapper.classList.add('message', isLocal ? 'local' : 'remote');
-        messageWrapper.innerHTML = `<div class="message-sender">${sender}</div><div>${text}</div>`;
+        
+        let messageHTML = `<div class="message-sender">${sender}</div>`;
+        
+        if (text) {
+            messageHTML += `<div>${text}</div>`;
+        }
+        
+        if (base64Image) {
+            messageHTML += `<img src="${base64Image}" class="shared-chat-image" alt="Shared image node" onclick="window.open(this.src)">`;
+        }
+        
+        messageWrapper.innerHTML = messageHTML;
         messagesDiv.appendChild(messageWrapper);
         messagesDiv.scrollTop = messagesDiv.scrollHeight;
     }
@@ -450,7 +541,6 @@
         displaySavedRooms();
     }
 
-    // UPGRADED: Storage schema structure version 3 updates to accept and track 'savedName' values
     function saveRoomData(code, displayName, savedName) {
         let rooms = JSON.parse(localStorage.getItem('chat_rooms_v3')) || [];
         rooms = rooms.filter(r => r.code !== code);
@@ -480,7 +570,6 @@
                 tag.className = 'room-tag';
                 tag.innerHTML = `<span>${roomObj.name}</span> <span class="tag-code">${roomObj.code}</span>`;
                 
-                // UPGRADED: Auto-populates the unique username assigned to this specific room index
                 tag.onclick = () => {
                     document.getElementById('room-input').value = roomObj.code;
                     document.getElementById('room-name-input').value = roomObj.name;
