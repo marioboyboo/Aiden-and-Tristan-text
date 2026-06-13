@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sleek Chat with Photo Sharing</title>
+    <title>Sleek Chat with Media Sharing</title>
     <style>
         :root {
             --bg-main: #0f172a;
@@ -196,23 +196,22 @@
         .message-sender { font-size: 11px; font-weight: 700; color: var(--text-muted); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
         .message.local .message-sender { color: #a5b4fc; }
 
-        /* Dynamic shared images rendering framework rules */
-        .shared-chat-image {
+        /* Media assets rendering style constraints */
+        .shared-chat-image, .shared-chat-video {
             max-width: 100%;
             max-height: 200px;
             border-radius: 8px;
             margin-top: 6px;
             display: block;
-            cursor: pointer;
-            transition: opacity 0.2s;
         }
+        .shared-chat-image { cursor: pointer; transition: opacity 0.2s; }
         .shared-chat-image:hover { opacity: 0.9; }
 
         .chat-input-area { display: flex; gap: 8px; align-items: center; }
         .chat-input-area input { margin: 0; flex: 1; }
         
-        /* Stylized custom image selector clip icon layout */
-        .image-select-btn {
+        /* Updated custom media selection button icon setup */
+        .media-select-btn {
             width: 46px;
             height: 46px;
             background-color: var(--bg-input);
@@ -226,7 +225,7 @@
             transition: background 0.2s;
             flex-shrink: 0;
         }
-        .image-select-btn:hover { background-color: #475569; }
+        .media-select-btn:hover { background-color: #475569; }
         #hidden-file-input { display: none; }
 
         .chat-input-area button.btn-send { margin: 0; width: auto; padding: 14px 20px; }
@@ -301,9 +300,9 @@
         <div id="messages"></div>
         
         <div class="chat-input-area">
-            <!-- New: Paperclip button node that opens native file selector triggers -->
-            <label class="image-select-btn" for="hidden-file-input">📷</label>
-            <input type="file" id="hidden-file-input" accept="image/*" onchange="handleImageUpload(event)">
+            <!-- Upgraded: File label accept parameter now allows image/* AND video/* content structures -->
+            <label class="media-select-btn" for="hidden-file-input">📁</label>
+            <input type="file" id="hidden-file-input" accept="image/*,video/*" onchange="handleMediaUpload(event)">
             
             <input type="text" id="message-input" placeholder="Message room..." autocomplete="off" onkeypress="checkEnter(event)">
             <button class="btn-primary btn-send" onclick="sendMessage()">Send</button>
@@ -400,7 +399,7 @@
             const { data, member } = message;
             if (member) {
                 const isLocal = member.id === drone.clientId;
-                displayMessage(data.text, member.clientData.name, isLocal, data.image);
+                displayMessage(data.text, member.clientData.name, isLocal, data.image, data.video);
             } else {
                 displayMessage(data.text, 'System', false);
             }
@@ -410,13 +409,16 @@
             const { data, member } = message;
             if (member) {
                 const isLocal = member.id === drone.clientId;
-                displayMessage(data.text, member.clientData.name, isLocal, data.image);
+                displayMessage(data.text, member.clientData.name, isLocal, data.image, data.video);
                 
                 if (!isLocal) {
                     playLoudNotificationSound();
                     
-                    // Generate specialized message previews if a payload contains an image attachment
-                    let previewContent = data.text || "Sent a photo 📷";
+                    let previewContent = data.text;
+                    if (!previewContent) {
+                        if (data.video) previewContent = "Sent a video 🎬";
+                        else if (data.image) previewContent = "Sent a photo 📷";
+                    }
 
                     if (document.hidden) {
                         triggerSystemNotification(member.clientData.name, previewContent);
@@ -429,46 +431,55 @@
         });
     }
 
-    // New: Processing function that parses images, scales down sizes, and generates base64 targets
-    function handleImageUpload(event) {
+    // Upgraded: Handles both image processing and video conversion into base64 channels
+    function handleMediaUpload(event) {
         const file = event.target.files[0];
         if (!file) return;
 
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            const img = new Image();
-            img.onload = function() {
-                // Scaling down the photo dimensions saves bandwidth and fits within Scaledrone message frames
-                const canvas = document.createElement('canvas');
-                let width = img.width;
-                let height = img.height;
-                const max_size = 800; // Limits layout to max 800px width/height
-
-                if (width > height) {
-                    if (width > max_size) { height *= max_size / width; width = max_size; }
-                } else {
-                    if (height > max_size) { width *= max_size / height; height = max_size; }
-                }
-
-                canvas.width = width;
-                canvas.height = height;
-                const ctx = canvas.getContext('2d');
-                ctx.drawImage(img, 0, 0, width, height);
-
-                // Export target layout structure directly back into high performance base64 text payload arrays
-                const base64Data = canvas.toDataURL('image/jpeg', 0.7); // 70% quality compression configuration
-                
-                // Ship payload contents across active room nodes
+        // Route routing parameters depending on whether it's a video file type structure
+        if (file.type.startsWith('video/')) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                // Video converted to base64 format directly
                 drone.publish({
                     room: roomName,
-                    message: { text: '', image: base64Data }
+                    message: { text: '', video: e.target.result }
                 });
             };
-            img.src = e.target.result;
-        };
-        reader.readAsDataURL(file);
+            reader.readAsDataURL(file);
+        } else {
+            // Process standard image file formats
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = new Image();
+                img.onload = function() {
+                    const canvas = document.createElement('canvas');
+                    let width = img.width;
+                    let height = img.height;
+                    const max_size = 800;
+
+                    if (width > height) {
+                        if (width > max_size) { height *= max_size / width; width = max_size; }
+                    } else {
+                        if (height > max_size) { width *= max_size / height; height = max_size; }
+                    }
+
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+
+                    const base64Data = canvas.toDataURL('image/jpeg', 0.7);
+                    drone.publish({
+                        room: roomName,
+                        message: { text: '', image: base64Data }
+                    });
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
         
-        // Reset the file selector component so clicking it again works flawlessly
         event.target.value = '';
     }
 
@@ -511,8 +522,8 @@
         msgInput.value = '';
     }
 
-    // Upgraded: Accepting an optional base64 image argument inside the standard log generator loop
-    function displayMessage(text, sender, isLocal, base64Image = null) {
+    // Upgraded: Accept optional video argument and append elements cleanly into logs
+    function displayMessage(text, sender, isLocal, base64Image = null, base64Video = null) {
         const messagesDiv = document.getElementById('messages');
         const messageWrapper = document.createElement('div');
         messageWrapper.classList.add('message', isLocal ? 'local' : 'remote');
@@ -525,6 +536,10 @@
         
         if (base64Image) {
             messageHTML += `<img src="${base64Image}" class="shared-chat-image" alt="Shared image node" onclick="window.open(this.src)">`;
+        }
+
+        if (base64Video) {
+            messageHTML += `<video src="${base64Video}" class="shared-chat-video" controls loops playsinline></video>`;
         }
         
         messageWrapper.innerHTML = messageHTML;
