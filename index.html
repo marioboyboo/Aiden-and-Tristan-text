@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sleek Chat</title>
+    <title>Sleek Named Chat</title>
     <style>
         :root {
             --bg-main: #0f172a;
@@ -133,24 +133,40 @@
 
         .room-tags {
             display: flex;
-            flex-wrap: wrap;
+            flex-direction: column;
             gap: 8px;
         }
 
         .room-tag {
             background: var(--bg-input);
             color: var(--text-main);
-            padding: 6px 14px;
-            border-radius: 20px;
-            font-size: 13px;
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-size: 14px;
             cursor: pointer;
             font-weight: 500;
             transition: background 0.2s, transform 0.1s;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
 
         .room-tag:hover {
             background: var(--accent);
             transform: translateY(-1px);
+        }
+
+        .room-tag .tag-code {
+            font-size: 11px;
+            color: var(--text-muted);
+            background: rgba(0,0,0,0.2);
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+
+        .room-tag:hover .tag-code {
+            color: #fff;
+            background: rgba(253, 253, 253, 0.2);
         }
 
         /* Chat View Interface */
@@ -172,16 +188,21 @@
         .room-info {
             display: flex;
             flex-direction: column;
+            max-width: 70%;
         }
 
         .room-info .room-id {
-            font-size: 16px;
+            font-size: 18px;
             font-weight: 700;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
 
         .room-info .user-id {
             font-size: 12px;
             color: var(--text-muted);
+            margin-top: 2px;
         }
 
         #messages {
@@ -249,32 +270,31 @@
             padding: 14px 24px; 
         }
     </style>
-    <!-- Scaledrone JavaScript API referenced via Screenshot 2026-06-12 213127.png config -->
     <script src="https://cdn.scaledrone.com/scaledrone.min.js"></script>
 </head>
 <body>
 
 <div class="container">
-    <!-- Screen 1: Lobby / Join Room -->
     <div id="login-view">
         <h2>Welcome</h2>
         
         <label for="username-input">Your Name</label>
         <input type="text" id="username-input" placeholder="Enter your name" autocomplete="off" required>
         
-        <label for="room-input">Room Code</label>
-        <input type="text" id="room-input" placeholder="Enter secret room code" autocomplete="off" required>
+        <label for="room-name-input">Room Name (Optional)</label>
+        <input type="text" id="room-name-input" placeholder="e.g., Chill Lounge, Gaming" autocomplete="off">
+
+        <label for="room-input">Secret Room Code</label>
+        <input type="text" id="room-input" placeholder="Enter connection code (e.g., secret123)" autocomplete="off" required>
         
         <button class="btn-primary" onclick="joinRoom()">Connect & Join</button>
 
-        <!-- Saved Rooms History List -->
         <div class="saved-rooms-section" id="saved-section" style="display: none;">
             <h4>Quick Access Rooms</h4>
             <div class="room-tags" id="saved-rooms-list"></div>
         </div>
     </div>
 
-    <!-- Screen 2: The Chat Interface -->
     <div id="chat-view">
         <div class="chat-header">
             <div class="room-info">
@@ -309,14 +329,20 @@
     function joinRoom() {
         username = document.getElementById('username-input').value.trim();
         const roomCode = document.getElementById('room-input').value.trim();
+        let customRoomName = document.getElementById('room-name-input').value.trim();
 
         if (!username || !roomCode) {
             alert('Please fill out your name and a room code.');
             return;
         }
 
-        // Save room code to local storage history
-        saveRoomCode(roomCode);
+        // If they didn't input a custom name, fall back to the code itself
+        if (!customRoomName) {
+            customRoomName = "Room " + roomCode;
+        }
+
+        // Save room code and custom name to local storage history
+        saveRoomData(roomCode, customRoomName);
 
         // Scaledrone dynamic room identifier mapping
         roomName = 'observable-' + roomCode;
@@ -332,8 +358,8 @@
             // Seamless UI Switch transition
             document.getElementById('login-view').style.display = 'none';
             document.getElementById('chat-view').style.display = 'flex';
-            document.getElementById('room-title').innerText = `Room: ${roomCode}`;
-            document.getElementById('user-title').innerText = `Logged in as ${username}`;
+            document.getElementById('room-title').innerText = customRoomName;
+            document.getElementById('user-title').innerText = `As ${username} | Code: ${roomCode}`;
 
             setupRoom();
         });
@@ -372,14 +398,12 @@
         const messageWrapper = document.createElement('div');
         messageWrapper.classList.add('message', isLocal ? 'local' : 'remote');
         
-        // Structure name on top, text underneath for a sleeker presentation
         messageWrapper.innerHTML = `<div class="message-sender">${sender}</div><div>${text}</div>`;
         
         messagesDiv.appendChild(messageWrapper);
         messagesDiv.scrollTop = messagesDiv.scrollHeight;
     }
 
-    // New Functionality: Safely unsubscribe and tear down Scaledrone connection
     function leaveRoom() {
         if (room) {
             room.unsubscribe();
@@ -393,37 +417,45 @@
         // Clear out old message logs completely
         document.getElementById('messages').innerHTML = '';
         document.getElementById('message-input').value = '';
+        document.getElementById('room-name-input').value = '';
 
         // Swap interface back to the entry menu view safely
         document.getElementById('chat-view').style.display = 'none';
         document.getElementById('login-view').style.display = 'block';
         
-        // Refresh the saved room tags list in case changes happened
+        // Refresh the saved room tags list
         displaySavedRooms();
     }
 
-    function saveRoomCode(code) {
-        let rooms = JSON.parse(localStorage.getItem('chat_rooms')) || [];
-        if (!rooms.includes(code)) {
-            rooms.push(code);
-            localStorage.setItem('chat_rooms', JSON.stringify(rooms));
-        }
+    // Storage update: Saves an object containing both the secret code and display name
+    function saveRoomData(code, displayName) {
+        let rooms = JSON.parse(localStorage.getItem('chat_rooms_v2')) || [];
+        
+        // Remove existing copy if it exists to avoid duplication
+        rooms = rooms.filter(r => r.code !== code);
+        
+        // Push the newest configuration to the top
+        rooms.unshift({ code: code, name: displayName });
+        
+        localStorage.setItem('chat_rooms_v2', JSON.stringify(rooms));
     }
 
     function displaySavedRooms() {
-        const rooms = JSON.parse(localStorage.getItem('chat_rooms')) || [];
+        const rooms = JSON.parse(localStorage.getItem('chat_rooms_v2')) || [];
         const section = document.getElementById('saved-section');
         const listDiv = document.getElementById('saved-rooms-list');
         
         if (rooms.length > 0) {
             section.style.display = 'block';
             listDiv.innerHTML = '';
-            rooms.forEach(roomCode => {
-                const tag = document.createElement('span');
+            rooms.forEach(roomObj => {
+                const tag = document.createElement('div');
                 tag.className = 'room-tag';
-                tag.innerText = roomCode;
+                tag.innerHTML = `<span>${roomObj.name}</span> <span class="tag-code">${roomObj.code}</span>`;
+                
                 tag.onclick = () => {
-                    document.getElementById('room-input').value = roomCode;
+                    document.getElementById('room-input').value = roomObj.code;
+                    document.getElementById('room-name-input').value = roomObj.name;
                 };
                 listDiv.appendChild(tag);
             });
