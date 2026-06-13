@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sleek Chat with Room Deletion</title>
+    <title>Sleek Chat with Notifications</title>
     <style>
         :root {
             --bg-main: #0f172a;
@@ -349,28 +349,39 @@
     let roomName = '';
     let username = '';
     let room = null;
+    let currentCustomRoomName = '';
 
     // Load saved rooms when the page opens
     document.addEventListener('DOMContentLoaded', () => {
         displaySavedRooms();
     });
 
+    // Request desktop notification permissions when joining a room
+    function requestNotificationPermission() {
+        if ('Notification' in window && Notification.permission === 'default') {
+            Notification.requestPermission();
+        }
+    }
+
     function joinRoom() {
         username = document.getElementById('username-input').value.trim();
         const roomCode = document.getElementById('room-input').value.trim();
-        let customRoomName = document.getElementById('room-name-input').value.trim();
+        currentCustomRoomName = document.getElementById('room-name-input').value.trim();
 
         if (!username || !roomCode) {
             alert('Please fill out your name and a room code.');
             return;
         }
 
-        if (!customRoomName) {
-            customRoomName = "Room " + roomCode;
+        if (!currentCustomRoomName) {
+            currentCustomRoomName = "Room " + roomCode;
         }
 
+        // Ask for permission to show notifications
+        requestNotificationPermission();
+
         // Save room code and custom name to local storage history
-        saveRoomData(roomCode, customRoomName);
+        saveRoomData(roomCode, currentCustomRoomName);
 
         // Scaledrone dynamic room identifier mapping
         roomName = 'observable-' + roomCode;
@@ -386,7 +397,7 @@
             // Seamless UI Switch transition
             document.getElementById('login-view').style.display = 'none';
             document.getElementById('chat-view').style.display = 'flex';
-            document.getElementById('room-title').innerText = customRoomName;
+            document.getElementById('room-title').innerText = currentCustomRoomName;
             document.getElementById('user-title').innerText = `As ${username} | Code: ${roomCode}`;
 
             setupRoom();
@@ -401,11 +412,27 @@
         room.on('message', message => {
             const { data, member } = message;
             if (member) {
-                displayMessage(data.text, member.clientData.name, member.id === drone.clientId);
+                const isLocal = member.id === drone.clientId;
+                displayMessage(data.text, member.clientData.name, isLocal);
+                
+                // Trigger notification if message is from someone else AND tab is hidden/unfocused
+                if (!isLocal && document.hidden) {
+                    triggerNotification(member.clientData.name, data.text);
+                }
             } else {
                 displayMessage(data.text, 'System', false);
             }
         });
+    }
+
+    // New Functionality: Trigger OS Desktop notification window alerts
+    function triggerNotification(sender, messageText) {
+        if ('Notification' in window && Notification.permission === 'granted') {
+            new Notification(`${sender} in ${currentCustomRoomName}`, {
+                body: messageText,
+                tag: 'chat-msg' // Replaces previous notification so multiple aren't stacked endlessly
+            });
+        }
     }
 
     function sendMessage() {
@@ -446,6 +473,7 @@
         document.getElementById('messages').innerHTML = '';
         document.getElementById('message-input').value = '';
         document.getElementById('room-name-input').value = '';
+        currentCustomRoomName = '';
 
         // Swap interface back to the entry menu view safely
         document.getElementById('chat-view').style.display = 'none';
@@ -458,21 +486,17 @@
     function saveRoomData(code, displayName) {
         let rooms = JSON.parse(localStorage.getItem('chat_rooms_v2')) || [];
         
-        // Remove existing copy if it exists to avoid duplication
         rooms = rooms.filter(r => r.code !== code);
-        
-        // Push the newest configuration to the top
         rooms.unshift({ code: code, name: displayName });
         
         localStorage.setItem('chat_rooms_v2', JSON.stringify(rooms));
     }
 
-    // New functionality: Delete a room from saved history lists
     function deleteRoomData(code) {
         let rooms = JSON.parse(localStorage.getItem('chat_rooms_v2')) || [];
         rooms = rooms.filter(r => r.code !== code);
         localStorage.setItem('chat_rooms_v2', JSON.stringify(rooms));
-        displaySavedRooms(); // Refresh UI instantly
+        displaySavedRooms();
     }
 
     function displaySavedRooms() {
@@ -485,7 +509,6 @@
             listDiv.innerHTML = '';
             
             rooms.forEach(roomObj => {
-                // Wrapper container for item row element structuring
                 const row = document.createElement('div');
                 row.className = 'room-tag-container';
 
@@ -500,10 +523,10 @@
 
                 const delBtn = document.createElement('button');
                 delBtn.className = 'btn-delete-tag';
-                delBtn.innerHTML = '&times;'; // Render standard visual clear indicator sign
+                delBtn.innerHTML = '&times;'; 
                 delBtn.title = 'Delete saved room';
                 delBtn.onclick = (e) => {
-                    e.stopPropagation(); // Prevents clicking the row and autofilling inputs
+                    e.stopPropagation(); 
                     deleteRoomData(roomObj.code);
                 };
 
