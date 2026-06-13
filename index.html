@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aiden and Tristan Chat</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f2f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        .container {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 450px;
+            text-align: center;
+        }
+        h2 { color: #333; margin-bottom: 20px; }
+        input, button {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+            font-size: 16px;
+        }
+        button {
+            background-color: #5856d6;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.2s;
+        }
+        button:hover { background-color: #4543b3; }
+        
+        /* Chat View Styles */
+        #chat-view { display: none; flex-direction: column; height: 500px; text-align: left; }
+        #messages {
+            flex: 1;
+            border: 1px solid #e5e5e5;
+            border-radius: 8px;
+            padding: 15px;
+            overflow-y: auto;
+            background: #fafafa;
+            margin-bottom: 10px;
+        }
+        .message {
+            margin-bottom: 12px;
+            padding: 8px 12px;
+            border-radius: 8px;
+            max-width: 80%;
+            word-wrap: break-word;
+        }
+        .message.local { background-color: #d1e7dd; margin-left: auto; }
+        .message.remote { background-color: #e2e3e5; }
+        .room-header { font-size: 14px; color: #666; margin-bottom: 10px; font-weight: 600; }
+        .chat-input-area { display: flex; gap: 8px; }
+        .chat-input-area input { margin: 0; flex: 1; }
+        .chat-input-area button { margin: 0; width: auto; padding: 0 20px; }
+    </style>
+    <script src="https://cdn.scaledrone.com/scaledrone.min.js"></script>
+</head>
+<body>
+
+<div class="container">
+    <div id="login-view">
+        <h2>Join Chat Room</h2>
+        <input type="text" id="username-input" placeholder="Enter your name (e.g., Aiden)" required>
+        <input type="text" id="room-input" placeholder="Enter Room Code (e.g., secret123)" required>
+        <button onclick="joinRoom()">Connect & Join</button>
+    </div>
+
+    <div id="chat-view">
+        <div class="room-header" id="room-title">Room: </div>
+        <div id="messages"></div>
+        <div class="chat-input-area">
+            <input type="text" id="message-input" placeholder="Type a message..." onkeypress="checkEnter(event)">
+            <button onclick="sendMessage()">Send</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Your Scaledrone Channel ID from the screenshot
+    const CLIENT_ID = 'Xj9aMZvB6pZOVHuz'; 
+    let drone = null;
+    let roomName = '';
+    let username = '';
+    let room = null;
+
+    function joinRoom() {
+        username = document.getElementById('username-input').value.trim();
+        const roomCode = document.getElementById('room-input').value.trim();
+
+        if (!username || !roomCode) {
+            alert('Please enter both a username and a room code.');
+            return;
+        }
+
+        // Scaledrone requires room names to start with 'observable-' to track user data/presence
+        roomName = 'observable-' + roomCode;
+
+        // Initialize Scaledrone connection
+        drone = new Scaledrone(CLIENT_ID, {
+            data: { name: username }
+        });
+
+        drone.on('open', error => {
+            if (error) {
+                return console.error(error);
+            }
+            console.log('Successfully connected to Scaledrone');
+            
+            // Switch UI views
+            document.getElementById('login-view').style.display = 'none';
+            document.getElementById('chat-view').style.display = 'flex';
+            document.getElementById('room-title').innerText = `Logged in as: ${username} | Room: ${roomCode}`;
+
+            // Subscribe to the chosen room
+            setupRoom();
+        });
+
+        drone.on('error', error => console.error('Connection error:', error));
+    }
+
+    function setupRoom() {
+        room = drone.subscribe(roomName);
+
+        room.on('open', error => {
+            if (error) {
+                console.error(error);
+            } else {
+                console.log('Successfully joined room');
+            }
+        });
+
+        // Listen for incoming messages
+        room.on('message', message => {
+            const { data, member } = message;
+            if (member) {
+                displayMessage(data.text, member.clientData.name, member.id === drone.clientId);
+            } else {
+                // Message sent from the server/webhook dashboard
+                displayMessage(data.text, 'Server', false);
+            }
+        });
+    }
+
+    function sendMessage() {
+        const msgInput = document.getElementById('message-input');
+        const text = msgInput.value.trim();
+        
+        if (text === '') return;
+
+        // Publish message to the current room
+        drone.publish({
+            room: roomName,
+            message: { text: text }
+        });
+
+        msgInput.value = '';
+    }
+
+    function displayMessage(text, sender, isLocal) {
+        const messagesDiv = document.getElementById('messages');
+        const messageEl = document.createElement('div');
+        
+        messageEl.classList.add('message');
+        messageEl.classList.add(isLocal ? 'local' : 'remote');
+        
+        // Formats message as "Name: Hello!"
+        messageEl.innerText = `${sender}: ${text}`;
+        
+        messagesDiv.appendChild(messageEl);
+        // Auto scroll to the bottom of the chat
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    }
+
+    // Allows pressing 'Enter' to send a message
+    function checkEnter(event) {
+        if (event.key === 'Enter') {
+            sendMessage();
+        }
+    }
+</script>
+
+</body>
+</html>
