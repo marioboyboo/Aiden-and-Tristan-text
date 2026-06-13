@@ -317,7 +317,6 @@
         .download-tile h3 { font-size: 18px; margin-bottom: 8px; font-weight: 700; }
         .download-tile p { font-size: 13px; color: var(--text-muted); margin-bottom: 20px; line-height: 1.4; }
         
-        /* Fixed: Styling a dedicated button link cleanly */
         .btn-exe-download { 
             display: block;
             width: 100%;
@@ -329,6 +328,8 @@
             font-size: 15px;
             font-weight: 600;
             transition: background 0.2s;
+            cursor: pointer;
+            border: none;
         }
         .btn-exe-download:hover { background-color: #059669; }
     </style>
@@ -383,19 +384,19 @@
     </div>
 </div>
 
-<div class="download-floating-btn" onclick="toggleDownloadTile(true)">
+<div class="download-floating-btn" id="floating-dl-btn">
     <span>💻</span> Download App
 </div>
 
-<div id="download-overlay" class="download-modal-overlay" onclick="toggleDownloadTile(false)">
-    <div class="download-tile" onclick="event.stopPropagation()">
-        <button class="close-tile-btn" onclick="toggleDownloadTile(false)">&times;</button>
+<div id="download-overlay" class="download-modal-overlay">
+    <div class="download-tile" id="download-tile-content">
+        <button class="close-tile-btn" id="close-dl-btn">&times;</button>
         <h3>Get Desktop Version</h3>
         <p>Run this chat directly from your computer for smoother desktop popups and notifications.</p>
         
-        <a href="ChatApp.exe" download="ChatApp.exe" id="exe-link" class="btn-exe-download" onclick="checkDownloadPath(event)">
+        <button class="btn-exe-download" id="start-exe-dl">
             📥 Download .EXE (Windows)
-        </a>
+        </button>
     </div>
 </div>
 
@@ -407,26 +408,50 @@
     let room = null;
     let currentCustomRoomName = '';
     let toastTimeout = null;
+    let audioCtx = null; // Fixed: Context is left uninitialized until the user explicitly hits a button
 
-    function toggleDownloadTile(shouldShow) {
-        const overlay = document.getElementById('download-overlay');
-        if (shouldShow) overlay.classList.add('open');
-        else overlay.classList.remove('open');
-    }
-
-    // FIXED: Helper to catch blank path errors and notify you what file name is expected
-    function checkDownloadPath(event) {
-        const linkElement = document.getElementById('exe-link');
-        const targetUrl = linkElement.getAttribute('href');
-        
-        if (targetUrl === '#' || targetUrl === '') {
-            event.preventDefault();
-            alert("Setup Notice: Change the href='#' value inside the HTML file to your actual compiled .exe file name or web storage link to run the downloader!");
+    // Safe initialization for the Audio API to prevent early startup browser locks
+    function initAudioContext() {
+        if (!audioCtx) {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         }
     }
 
-    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    // Direct Event Listener Bindings (Much more reliable than inline HTML tags)
+    document.getElementById('floating-dl-btn').addEventListener('click', () => {
+        document.getElementById('download-overlay').classList.add('open');
+    });
+
+    document.getElementById('close-dl-btn').addEventListener('click', () => {
+        document.getElementById('download-overlay').classList.remove('open');
+    });
+
+    document.getElementById('download-overlay').addEventListener('click', () => {
+        document.getElementById('download-overlay').classList.remove('open');
+    });
+
+    document.getElementById('download-tile-content').addEventListener('click', (event) => {
+        event.stopPropagation(); // Prevents clicking inside the window from closing it
+    });
+
+    document.getElementById('start-exe-dl').addEventListener('click', () => {
+        // Change "ChatApp.exe" below to your exact file name or full web address when ready
+        const targetFile = "ChatApp.exe"; 
+        
+        if (targetFile === "" || targetFile === "#") {
+            alert("Setup Notice: Update the 'targetFile' variable in the script to link your real app downoad!");
+        } else {
+            const link = document.createElement('a');
+            link.href = targetFile;
+            link.download = targetFile;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    });
+
     function playLoudNotificationSound() {
+        initAudioContext();
         try {
             const osc1 = audioCtx.createOscillator();
             const osc2 = audioCtx.createOscillator();
@@ -467,6 +492,7 @@
     }
 
     function joinRoom() {
+        initAudioContext();
         username = document.getElementById('username-input').value.trim();
         const roomCode = document.getElementById('room-input').value.trim();
         currentCustomRoomName = document.getElementById('room-name-input').value.trim();
@@ -580,3 +606,130 @@
                 img.src = e.target.result;
             };
             reader.readAsDataURL(file);
+        }
+        
+        event.target.value = '';
+    }
+
+    function mobileNotificationCondition() {
+        const msgDiv = document.getElementById('messages');
+        return (msgDiv.scrollHeight - msgDiv.scrollTop - msgDiv.clientHeight > 150);
+    }
+
+    function triggerSystemNotification(sender, messageText) {
+        if ('Notification' in window && Notification.permission === 'granted') {
+            new Notification(`${sender} inside ${currentCustomRoomName}`, {
+                body: messageText,
+                tag: 'chat-msg'
+            });
+        }
+    }
+
+    function showPreviewToast(sender, text) {
+        clearTimeout(toastTimeout);
+        document.getElementById('toast-sender').innerText = `Message from ${sender} (${currentCustomRoomName})`;
+        document.getElementById('toast-text').innerText = text;
+        
+        const toast = document.getElementById('chat-notification-toast');
+        toast.classList.add('show');
+
+        toastTimeout = setTimeout(() => {
+            toast.classList.remove('show');
+        }, 5000);
+    }
+
+    function dismissNotification() {
+        document.getElementById('chat-notification-toast').classList.remove('show');
+    }
+
+    function sendMessage() {
+        const msgInput = document.getElementById('message-input');
+        const text = msgInput.value.trim();
+        if (text === '') return;
+        drone.publish({ room: roomName, message: { text: text } });
+        msgInput.value = '';
+    }
+
+    function displayMessage(text, sender, isLocal, base64Image = null, base64Video = null) {
+        const messagesDiv = document.getElementById('messages');
+        const messageWrapper = document.createElement('div');
+        messageWrapper.classList.add('message', isLocal ? 'local' : 'remote');
+        
+        let messageHTML = `<div class="message-sender">${sender}</div>`;
+        
+        if (text) {
+            messageHTML += `<div>${text}</div>`;
+        }
+        
+        if (base64Image) {
+            messageHTML += `<img src="${base64Image}" class="shared-chat-image" alt="Shared image node" onclick="window.open(this.src)">`;
+        }
+
+        if (base64Video) {
+            messageHTML += `<video src="${base64Video}" class="shared-chat-video" controls loops playsinline></video>`;
+        }
+        
+        messageWrapper.innerHTML = messageHTML;
+        messagesDiv.appendChild(messageWrapper);
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    }
+
+    function leaveRoom() {
+        if (room) { room.unsubscribe(); room = null; }
+        if (drone) { drone.close(); drone = null; }
+        document.getElementById('messages').innerHTML = '';
+        document.getElementById('chat-view').style.display = 'none';
+        document.getElementById('login-view').style.display = 'block';
+        displaySavedRooms();
+    }
+
+    function saveRoomData(code, displayName, savedName) {
+        let rooms = JSON.parse(localStorage.getItem('chat_rooms_v3')) || [];
+        rooms = rooms.filter(r => r.code !== code);
+        rooms.unshift({ code: code, name: displayName, username: savedName });
+        localStorage.setItem('chat_rooms_v3', JSON.stringify(rooms));
+    }
+
+    function deleteRoomData(code) {
+        let rooms = JSON.parse(localStorage.getItem('chat_rooms_v3')) || [];
+        rooms = rooms.filter(r => r.code !== code);
+        localStorage.setItem('chat_rooms_v3', JSON.stringify(rooms));
+        displaySavedRooms();
+    }
+
+    function displaySavedRooms() {
+        const rooms = JSON.parse(localStorage.getItem('chat_rooms_v3')) || [];
+        const section = document.getElementById('saved-section');
+        const listDiv = document.getElementById('saved-rooms-list');
+        
+        if (rooms.length > 0) {
+            section.style.display = 'block';
+            listDiv.innerHTML = '';
+            rooms.forEach(roomObj => {
+                const row = document.createElement('div');
+                row.className = 'room-tag-container';
+                const tag = document.createElement('div');
+                tag.className = 'room-tag';
+                tag.innerHTML = `<span>${roomObj.name}</span> <span class="tag-code">${roomObj.code}</span>`;
+                
+                tag.onclick = () => {
+                    document.getElementById('room-input').value = roomObj.code;
+                    document.getElementById('room-name-input').value = roomObj.name;
+                    document.getElementById('username-input').value = roomObj.username || '';
+                };
+                
+                const delBtn = document.createElement('button');
+                delBtn.className = 'btn-delete-tag';
+                delBtn.innerHTML = '&times;';
+                delBtn.onclick = (e) => { e.stopPropagation(); deleteRoomData(roomObj.code); };
+                row.appendChild(tag);
+                row.appendChild(delBtn);
+                listDiv.appendChild(row);
+            });
+        } else { section.style.display = 'none'; }
+    }
+
+    function checkEnter(event) { if (event.key === 'Enter') sendMessage(); }
+</script>
+</body>
+</html>
