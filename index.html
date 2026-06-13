@@ -253,7 +253,7 @@
         .notification-toast .toast-header-text { font-weight: 800; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: #c7d2fe; }
         .notification-toast .toast-body-preview { font-size: 14px; font-weight: 500; line-height: 1.4; color: #f8fafc; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 
-        /* NEW: Floating Download App Button Framework */
+        /* Floating Download App Button */
         .download-floating-btn {
             position: fixed;
             bottom: 24px;
@@ -274,7 +274,7 @@
         }
         .download-floating-btn:hover { background-color: var(--accent-hover); transform: scale(1.03); }
 
-        /* NEW: Download App Tile Drawer System */
+        /* Download App Tile Drawer System */
         .download-modal-overlay {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -316,7 +316,20 @@
 
         .download-tile h3 { font-size: 18px; margin-bottom: 8px; font-weight: 700; }
         .download-tile p { font-size: 13px; color: var(--text-muted); margin-bottom: 20px; line-height: 1.4; }
-        .btn-exe-download { background-color: #10b981; color: white; display: flex; align-items: center; justify-content: center; gap: 8px; }
+        
+        /* Fixed: Styling a dedicated button link cleanly */
+        .btn-exe-download { 
+            display: block;
+            width: 100%;
+            background-color: #10b981; 
+            color: white; 
+            padding: 14px;
+            border-radius: 10px;
+            text-decoration: none;
+            font-size: 15px;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
         .btn-exe-download:hover { background-color: #059669; }
     </style>
     <script src="https://cdn.scaledrone.com/scaledrone.min.js"></script>
@@ -378,9 +391,10 @@
     <div class="download-tile" onclick="event.stopPropagation()">
         <button class="close-tile-btn" onclick="toggleDownloadTile(false)">&times;</button>
         <h3>Get Desktop Version</h3>
-        <p>Run this chat directly from your computer for smoother desktop popups and global notifications.</p>
-        <a href="#" id="exe-link" style="text-decoration: none;">
-            <button class="btn-exe-download">📥 Download .EXE (Windows)</button>
+        <p>Run this chat directly from your computer for smoother desktop popups and notifications.</p>
+        
+        <a href="ChatApp.exe" download="ChatApp.exe" id="exe-link" class="btn-exe-download" onclick="checkDownloadPath(event)">
+            📥 Download .EXE (Windows)
         </a>
     </div>
 </div>
@@ -394,11 +408,21 @@
     let currentCustomRoomName = '';
     let toastTimeout = null;
 
-    // NEW: Action helper to toggle the download interface state
     function toggleDownloadTile(shouldShow) {
         const overlay = document.getElementById('download-overlay');
         if (shouldShow) overlay.classList.add('open');
         else overlay.classList.remove('open');
+    }
+
+    // FIXED: Helper to catch blank path errors and notify you what file name is expected
+    function checkDownloadPath(event) {
+        const linkElement = document.getElementById('exe-link');
+        const targetUrl = linkElement.getAttribute('href');
+        
+        if (targetUrl === '#' || targetUrl === '') {
+            event.preventDefault();
+            alert("Setup Notice: Change the href='#' value inside the HTML file to your actual compiled .exe file name or web storage link to run the downloader!");
+        }
     }
 
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -556,33 +580,3 @@
                 img.src = e.target.result;
             };
             reader.readAsDataURL(file);
-        }
-        
-        event.target.value = '';
-    }
-
-    function mobileNotificationCondition() {
-        const msgDiv = document.getElementById('messages');
-        return (msgDiv.scrollHeight - msgDiv.scrollTop - msgDiv.clientHeight > 150);
-    }
-
-    function triggerSystemNotification(sender, messageText) {
-        if ('Notification' in window && Notification.permission === 'granted') {
-            new Notification(`${sender} inside ${currentCustomRoomName}`, {
-                body: messageText,
-                tag: 'chat-msg'
-            });
-        }
-    }
-
-    function showPreviewToast(sender, text) {
-        clearTimeout(toastTimeout);
-        document.getElementById('toast-sender').innerText = `Message from ${sender} (${currentCustomRoomName})`;
-        document.getElementById('toast-text').innerText = text;
-        
-        const toast = document.getElementById('chat-notification-toast');
-        toast.classList.add('show');
-
-        toastTimeout = setTimeout(() => {
-            toast.classList.remove('show');
-        },
