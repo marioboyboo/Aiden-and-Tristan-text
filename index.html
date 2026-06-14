@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sleek Chat with Media Sharing</title>
+    <title>Sleek Chat with Permissions Sharing</title>
     <style>
         :root {
             --bg-main: #0f172a;
@@ -17,6 +17,12 @@
             --msg-remote: #334155;
             --danger: #ef4444;
             --danger-hover: #dc2626;
+            
+            /* Role Colors */
+            --color-owner: #f59e0b;
+            --color-mod: #3b82f6;
+            --color-member: #10b981;
+            --color-visitor: #64748b;
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -40,10 +46,30 @@
             border-radius: 16px;
             box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.3);
             width: 100%;
-            max-width: 480px;
+            max-width: 760px; /* Widened layout to comfortably feature User Directory panel */
             transition: all 0.3s ease;
             z-index: 10;
         }
+
+        .app-layout {
+            display: flex;
+            gap: 24px;
+        }
+
+        .main-chat-area {
+            flex: 1;
+        }
+
+        /* User List Sidebar Panel */
+        .user-directory-panel {
+            width: 220px;
+            border-left: 1px solid var(--bg-input);
+            padding-left: 20px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #login-view { width: 100%; max-width: 440px; margin: 0 auto; }
 
         h2 { 
             font-size: 24px; 
@@ -102,7 +128,6 @@
         }
         .btn-danger:hover { background-color: var(--danger); color: white; border-color: var(--danger); }
         
-        /* Saved Rooms Section */
         .saved-rooms-section {
             margin-top: 24px;
             border-top: 1px solid var(--bg-input);
@@ -161,8 +186,8 @@
         }
         .btn-delete-tag:hover { background: rgba(239, 68, 68, 0.15); color: var(--danger); border-color: rgba(239, 68, 68, 0.3); }
 
-        /* Chat View Interface */
-        #chat-view { display: none; flex-direction: column; height: 550px; }
+        /* Chat View Interface Layout */
+        #chat-view { display: none; width: 100%; }
 
         .chat-header { 
             display: flex;
@@ -178,7 +203,7 @@
         .room-info .user-id { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
 
         #messages {
-            flex: 1;
+            height: 400px;
             border-radius: 12px;
             padding: 16px;
             overflow-y: auto;
@@ -193,8 +218,49 @@
         .message.local { background-color: var(--msg-local); color: #fff; align-self: flex-end; border-bottom-right-radius: 2px; }
         .message.remote { background-color: var(--msg-remote); color: var(--text-main); align-self: flex-start; border-bottom-left-radius: 2px; }
 
-        .message-sender { font-size: 11px; font-weight: 700; color: var(--text-muted); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .message-sender { font-size: 11px; font-weight: 700; color: var(--text-muted); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px; }
         .message.local .message-sender { color: #a5b4fc; }
+
+        /* Role Badges Display */
+        .badge {
+            font-size: 9px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 800;
+            color: white;
+            text-transform: uppercase;
+        }
+        .badge.owner { background-color: var(--color-owner); }
+        .badge.mod { background-color: var(--color-mod); }
+        .badge.member { background-color: var(--color-member); }
+        .badge.visitor { background-color: var(--color-visitor); }
+
+        /* User Directory Elements */
+        .directory-title { font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 12px; letter-spacing: 0.5px; }
+        .user-list-container { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+        
+        .user-row {
+            background: rgba(15, 23, 42, 0.3);
+            padding: 8px 10px;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            font-size: 13px;
+        }
+        .user-row-meta { display: flex; justify-content: space-between; align-items: center; }
+        .user-row-actions { display: flex; gap: 4px; margin-top: 2px; }
+        
+        .action-mini-btn {
+            padding: 3px 6px;
+            font-size: 10px;
+            border-radius: 4px;
+            width: auto;
+            background: var(--bg-input);
+            color: var(--text-main);
+        }
+        .action-mini-btn:hover { background: var(--accent); }
+        .action-mini-btn.danger-action:hover { background: var(--danger); }
 
         .shared-chat-image, .shared-chat-video {
             max-width: 100%;
@@ -203,10 +269,7 @@
             margin-top: 6px;
             display: block;
         }
-        .shared-chat-image { cursor: pointer; transition: opacity 0.2s; }
-        .shared-chat-image:hover { opacity: 0.9; }
 
-        /* URL Link Preview Card Styles */
         .link-preview-card {
             display: block;
             background: rgba(0, 0, 0, 0.2);
@@ -216,42 +279,11 @@
             margin-top: 6px;
             text-decoration: none;
             color: inherit;
-            transition: background 0.2s, border-color 0.2s;
         }
-        .link-preview-card:hover {
-            background: rgba(255, 255, 255, 0.05);
-            border-color: var(--accent);
-        }
-        .link-preview-title {
-            font-size: 12px;
-            font-weight: 700;
-            color: #a5b4fc;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-bottom: 2px;
-            display: flex;
-            align-items: center;
-            gap: 4px;
-        }
-        .message.remote .link-preview-title {
-            color: #818cf8;
-        }
-        .link-preview-name {
-            font-size: 14px;
-            font-weight: 600;
-            color: var(--text-main);
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        .link-preview-url {
-            font-size: 11px;
-            color: var(--text-muted);
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            margin-top: 2px;
-        }
+        .link-preview-card:hover { border-color: var(--accent); }
+        .link-preview-title { font-size: 12px; font-weight: 700; color: #a5b4fc; text-transform: uppercase; margin-bottom: 2px; }
+        .link-preview-name { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .link-preview-url { font-size: 11px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
         .chat-input-area { display: flex; gap: 8px; align-items: center; }
         .chat-input-area input { margin: 0; flex: 1; }
@@ -267,118 +299,38 @@
             justify-content: center;
             cursor: pointer;
             font-size: 18px;
-            transition: background 0.2s;
             flex-shrink: 0;
         }
-        .media-select-btn:hover { background-color: #475569; }
         #hidden-file-input { display: none; }
-
         .chat-input-area button.btn-send { margin: 0; width: auto; padding: 14px 20px; }
 
-        /* Notification Toast Preview */
         .notification-toast {
             position: absolute;
-            top: -120px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: #4f46e5;
-            color: white;
-            padding: 16px 22px;
-            border-radius: 14px;
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.5);
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-            width: calc(100% - 40px);
-            max-width: 440px;
-            z-index: 99999;
-            border-left: 5px solid #a5b4fc;
-            transition: top 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            cursor: pointer;
+            top: -120px; left: 50%; transform: translateX(-50%);
+            background: #4f46e5; color: white; padding: 16px 22px; border-radius: 14px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+            display: flex; flex-direction: column; gap: 6px; width: calc(100% - 40px); max-width: 440px; z-index: 99999;
+            transition: top 0.4s; cursor: pointer;
         }
         .notification-toast.show { top: 24px; }
-        .notification-toast .toast-header-text { font-weight: 800; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: #c7d2fe; }
-        .notification-toast .toast-body-preview { font-size: 14px; font-weight: 500; line-height: 1.4; color: #f8fafc; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 
-        /* Floating Download App Button */
         .download-floating-btn {
-            position: fixed;
-            bottom: 24px;
-            right: 24px;
-            background-color: var(--accent);
-            color: #fff;
-            padding: 12px 20px;
-            border-radius: 50px;
-            font-size: 14px;
-            font-weight: 600;
-            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
-            cursor: pointer;
-            z-index: 100;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            transition: transform 0.2s, background-color 0.2s;
+            position: fixed; bottom: 24px; right: 24px;
+            background-color: var(--accent); color: #fff; padding: 12px 20px; border-radius: 50px;
+            font-size: 14px; font-weight: 600; box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+            cursor: pointer; z-index: 100; display: flex; align-items: center; gap: 8px;
         }
-        .download-floating-btn:hover { background-color: var(--accent-hover); transform: scale(1.03); }
 
-        /* Download App Tile Drawer System */
         .download-modal-overlay {
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background-color: rgba(15, 23, 42, 0.6);
-            backdrop-filter: blur(4px);
-            z-index: 1000;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            opacity: 0; pointer-events: none;
-            transition: opacity 0.2s ease;
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px);
+            z-index: 1000; display: flex; justify-content: center; align-items: center;
+            opacity: 0; pointer-events: none; transition: opacity 0.2s ease;
         }
         .download-modal-overlay.open { opacity: 1; pointer-events: auto; }
-
-        .download-tile {
-            background-color: var(--bg-card);
-            border: 1px solid var(--bg-input);
-            padding: 24px;
-            border-radius: 16px;
-            width: 90%;
-            max-width: 340px;
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.4);
-            position: relative;
-            transform: scale(0.9);
-            transition: transform 0.2s ease;
-            text-align: center;
-        }
-        .download-modal-overlay.open .download-tile { transform: scale(1); }
-
-        .close-tile-btn {
-            position: absolute;
-            top: 14px; right: 16px;
-            background: none; border: none;
-            color: var(--text-muted);
-            font-size: 20px; cursor: pointer;
-            width: auto; padding: 0;
-        }
-        .close-tile-btn:hover { color: var(--text-main); }
-
-        .download-tile h3 { font-size: 18px; margin-bottom: 8px; font-weight: 700; }
-        .download-tile p { font-size: 13px; color: var(--text-muted); margin-bottom: 20px; line-height: 1.4; }
-        
-        .btn-exe-download { 
-            display: block;
-            width: 100%;
-            background-color: #10b981; 
-            color: white; 
-            padding: 14px;
-            border-radius: 10px;
-            text-decoration: none;
-            font-size: 15px;
-            font-weight: 600;
-            transition: background 0.2s;
-            cursor: pointer;
-            border: none;
-        }
-        .btn-exe-download:hover { background-color: #059669; }
+        .download-tile { background-color: var(--bg-card); padding: 24px; border-radius: 16px; width: 90%; max-width: 340px; text-align: center; position: relative; }
+        .close-tile-btn { position: absolute; top: 14px; right: 16px; background: none; border: none; color: var(--text-muted); font-size: 20px; cursor: pointer; }
+        .btn-exe-download { display: block; width: 100%; background-color: #10b981; color: white; padding: 14px; border-radius: 10px; text-decoration: none; font-size: 15px; font-weight: 600; border: none; }
     </style>
     <script src="https://cdn.scaledrone.com/scaledrone.min.js"></script>
 </head>
@@ -392,12 +344,11 @@
 <div class="container">
     <div id="login-view">
         <h2>Welcome</h2>
-        
         <label for="username-input">Your Name</label>
         <input type="text" id="username-input" placeholder="Enter your name" autocomplete="off" required>
         
         <label for="room-name-input">Room Name (Optional)</label>
-        <input type="text" id="room-name-input" placeholder="e.g., Chill Lounge, Gaming" autocomplete="off">
+        <input type="text" id="room-name-input" placeholder="e.g., Chill Lounge" autocomplete="off">
 
         <label for="room-input">Secret Room Code</label>
         <input type="text" id="room-input" placeholder="Enter connection code" autocomplete="off" required>
@@ -419,14 +370,23 @@
             <button class="btn-danger" onclick="leaveRoom()">Leave Room</button>
         </div>
         
-        <div id="messages"></div>
-        
-        <div class="chat-input-area">
-            <label class="media-select-btn" for="hidden-file-input">📁</label>
-            <input type="file" id="hidden-file-input" accept="image/*,video/*" onchange="handleMediaUpload(event)">
-            
-            <input type="text" id="message-input" placeholder="Message room..." autocomplete="off" onkeypress="checkEnter(event)">
-            <button class="btn-primary btn-send" onclick="sendMessage()">Send</button>
+        <div class="app-layout">
+            <div class="main-chat-area">
+                <div id="messages"></div>
+                
+                <div class="chat-input-area">
+                    <label class="media-select-btn" id="media-btn-label" for="hidden-file-input">📁</label>
+                    <input type="file" id="hidden-file-input" accept="image/*,video/*" onchange="handleMediaUpload(event)">
+                    
+                    <input type="text" id="message-input" placeholder="You are a visitor. View only..." autocomplete="off" onkeypress="checkEnter(event)" disabled>
+                    <button class="btn-primary btn-send" id="send-msg-btn" onclick="sendMessage()" disabled>Send</button>
+                </div>
+            </div>
+
+            <div class="user-directory-panel">
+                <div class="directory-title">Room Users</div>
+                <div class="user-list-container" id="user-list-box"></div>
+            </div>
         </div>
     </div>
 </div>
@@ -439,11 +399,8 @@
     <div class="download-tile" id="download-tile-content">
         <button class="close-tile-btn" id="close-dl-btn">&times;</button>
         <h3>Get Desktop Version</h3>
-        <p>Run this chat directly from your computer for smoother desktop popups and notifications.</p>
-        
-        <button class="btn-exe-download" id="start-exe-dl">
-            📥 Download .EXE (Windows)
-        </button>
+        <p>Run this chat directly from your computer for smoother desktop popups.</p>
+        <button class="btn-exe-download" id="start-exe-dl">📥 Download .EXE (Windows)</button>
     </div>
 </div>
 
@@ -457,165 +414,246 @@
     let toastTimeout = null;
     let audioCtx = null;
 
+    // Roles Hierarchy Management Matrix
+    const ROLES = { OWNER: 'owner', MODERATOR: 'moderator', MEMBER: 'member', VISITOR: 'visitor' };
+    let myCurrentRole = ROLES.VISITOR; 
+    let activeUsersMap = {}; // Tracks local directory instances inside room channel
+
     function initAudioContext() {
-        if (!audioCtx) {
-            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        }
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     }
 
-    document.getElementById('floating-dl-btn').addEventListener('click', () => {
-        document.getElementById('download-overlay').classList.add('open');
-    });
-
-    document.getElementById('close-dl-btn').addEventListener('click', () => {
-        document.getElementById('download-overlay').classList.remove('open');
-    });
-
-    document.getElementById('download-overlay').addEventListener('click', () => {
-        document.getElementById('download-overlay').classList.remove('open');
-    });
-
-    document.getElementById('download-tile-content').addEventListener('click', (event) => {
-        event.stopPropagation();
-    });
-
-    document.getElementById('start-exe-dl').addEventListener('click', () => {
-        const targetFile = "ChatApp.exe"; 
-        
-        if (targetFile === "" || targetFile === "#") {
-            alert("Setup Notice: Update the 'targetFile' variable in the script to link your real app download!");
-        } else {
-            const link = document.createElement('a');
-            link.href = targetFile;
-            link.download = targetFile;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        }
-    });
-
-    function playLoudNotificationSound() {
-        initAudioContext();
-        try {
-            const osc1 = audioCtx.createOscillator();
-            const osc2 = audioCtx.createOscillator();
-            const gainNode = audioCtx.createGain();
-            
-            osc1.connect(gainNode);
-            osc2.connect(gainNode);
-            gainNode.connect(audioCtx.destination);
-            
-            osc1.type = 'triangle';
-            osc2.type = 'sine';
-            
-            osc1.frequency.setValueAtTime(659.25, audioCtx.currentTime);
-            osc1.frequency.setValueAtTime(987.77, audioCtx.currentTime + 0.08);
-            
-            osc2.frequency.setValueAtTime(523.25, audioCtx.currentTime);
-            osc2.frequency.setValueAtTime(783.99, audioCtx.currentTime + 0.08);
-            
-            gainNode.gain.setValueAtTime(0.4, audioCtx.currentTime); 
-            gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.35);
-            
-            osc1.start(audioCtx.currentTime);
-            osc2.start(audioCtx.currentTime);
-            
-            osc1.stop(audioCtx.currentTime + 0.35);
-            osc2.stop(audioCtx.currentTime + 0.35);
-        } catch(e) { console.log("Audio play deferred."); }
-    }
-
-    document.addEventListener('DOMContentLoaded', () => {
-        displaySavedRooms();
-    });
-
-    function requestNotificationPermission() {
-        if ('Notification' in window && Notification.permission === 'default') {
-            Notification.requestPermission();
-        }
-    }
+    document.getElementById('floating-dl-btn').addEventListener('click', () => document.getElementById('download-overlay').classList.add('open'));
+    document.getElementById('close-dl-btn').addEventListener('click', () => document.getElementById('download-overlay').classList.remove('open'));
+    document.getElementById('download-overlay').addEventListener('click', () => document.getElementById('download-overlay').classList.remove('open'));
+    document.getElementById('download-tile-content').addEventListener('click', (e) => e.stopPropagation());
 
     function joinRoom() {
         initAudioContext();
         username = document.getElementById('username-input').value.trim();
         const roomCode = document.getElementById('room-input').value.trim();
-        currentCustomRoomName = document.getElementById('room-name-input').value.trim();
+        currentCustomRoomName = document.getElementById('room-name-input').value.trim() || "Room " + roomCode;
 
         if (!username || !roomCode) {
             alert('Please fill out your name and a room code.');
             return;
         }
 
-        if (!currentCustomRoomName) {
-            currentCustomRoomName = "Room " + roomCode;
-        }
-
-        requestNotificationPermission();
         saveRoomData(roomCode, currentCustomRoomName, username);
         roomName = 'observable-' + roomCode;
 
-        drone = new Scaledrone(CLIENT_ID, { data: { name: username } });
+        // Pass initialization metadata payload parameters to channel pipeline
+        drone = new Scaledrone(CLIENT_ID, { data: { name: username, initialRole: ROLES.VISITOR } });
 
         drone.on('open', error => {
             if (error) return console.error(error);
             document.getElementById('login-view').style.display = 'none';
             document.getElementById('chat-view').style.display = 'flex';
             document.getElementById('room-title').innerText = currentCustomRoomName;
-            document.getElementById('user-title').innerText = `As ${username} | Code: ${roomCode}`;
             setupRoom();
         });
     }
 
     function setupRoom() {
-        room = drone.subscribe(roomName, {
-            historyCount: 50 
+        room = drone.subscribe(roomName, { historyCount: 30 });
+
+        // Listen for user synchronization handshakes inside structural membership lists
+        room.on('members', members => {
+            // Rule: If you are the first entity entering an empty stream, you claim Owner privileges automatically
+            if (members.length === 1) {
+                myCurrentRole = ROLES.OWNER;
+            }
+            
+            members.forEach(m => {
+                activeUsersMap[m.id] = {
+                    id: m.id,
+                    name: m.clientData.name,
+                    role: m.id === drone.clientId ? myCurrentRole : ROLES.VISITOR
+                };
+            });
+            
+            // Sync roles down stream to balance connection properties across systems
+            broadcastSystemHandshake();
+            updateInterfacePermissions();
         });
 
-        room.on('history_message', message => {
-            const { data, member } = message;
-            if (member) {
-                const isLocal = member.id === drone.clientId;
-                displayMessage(data.text, member.clientData.name, isLocal, data.image, data.video);
-            } else {
-                displayMessage(data.text, 'System', false);
+        room.on('member_join', member => {
+            activeUsersMap[member.id] = { id: member.id, name: member.clientData.name, role: ROLES.VISITOR };
+            if (myCurrentRole === ROLES.OWNER || myCurrentRole === ROLES.MODERATOR) {
+                broadcastSystemHandshake(); 
             }
+            updateInterfacePermissions();
+        });
+
+        room.on('member_leave', member => {
+            delete activeUsersMap[member.id];
+            updateInterfacePermissions();
         });
 
         room.on('message', message => {
-            const { data, member } = message;
+            const { data, member, id } = message;
+            
+            // Process specialized core background system orchestration signals
+            if (data.systemSignal) {
+                handleSystemSignal(data.systemSignal);
+                return;
+            }
+
             if (member) {
                 const isLocal = member.id === drone.clientId;
-                displayMessage(data.text, member.clientData.name, isLocal, data.image, data.video);
-                
-                if (!isLocal) {
-                    playLoudNotificationSound();
-                    
-                    let previewContent = data.text;
-                    if (!previewContent) {
-                        if (data.video) previewContent = "Sent a video 🎬";
-                        else if (data.image) previewContent = "Sent a photo 📷";
-                    }
-
-                    if (document.hidden) {
-                        triggerSystemNotification(member.clientData.name, previewContent);
-                    }
-                    if (document.hidden || mobileNotificationCondition()) {
-                        showPreviewToast(member.clientData.name, previewContent);
-                    }
-                }
+                const senderRole = activeUsersMap[member.id]?.role || ROLES.VISITOR;
+                displayMessage(data.text, member.clientData.name, isLocal, senderRole, data.image, data.video);
             }
         });
     }
 
-    // UPDATED: Added a size check to handle large files smoothly
+    // Handles administrative network calls behind the scenes
+    function broadcastSystemHandshake() {
+        if (!drone) return;
+        drone.publish({
+            room: roomName,
+            message: { systemSignal: { type: 'SYNC_ROLES', rolesState: activeUsersMap } }
+        });
+    }
+
+    function handleSystemSignal(signal) {
+        if (signal.type === 'SYNC_ROLES') {
+            // Merge states, respecting the structural updates pushed by Owners/Mods
+            Object.keys(signal.rolesState).forEach(clientId => {
+                if (activeUsersMap[clientId]) {
+                    activeUsersMap[clientId].role = signal.rolesState[clientId].role;
+                }
+            });
+            if (signal.rolesState[drone.clientId]) {
+                myCurrentRole = signal.rolesState[drone.clientId].role;
+            }
+            updateInterfacePermissions();
+        } 
+        else if (signal.type === 'ALTER_ROLE' && signal.targetId === drone.clientId) {
+            myCurrentRole = signal.newRole;
+            activeUsersMap[drone.clientId].role = myCurrentRole;
+            alert(`Your permission status has been updated to: ${myCurrentRole.toUpperCase()}`);
+            updateInterfacePermissions();
+            broadcastSystemHandshake();
+        } 
+        else if (signal.type === 'BAN_USER' && signal.targetId === drone.clientId) {
+            alert("You have been banned from this room by an administrator.");
+            leaveRoom();
+        }
+    }
+
+    // Updates interface interactions depending on permissions level
+    function updateInterfacePermissions() {
+        const msgInput = document.getElementById('message-input');
+        const sendBtn = document.getElementById('send-msg-btn');
+        const mediaLabel = document.getElementById('media-btn-label');
+        const userTitle = document.getElementById('user-title');
+
+        userTitle.innerText = `As ${username} (${myCurrentRole.toUpperCase()})`;
+
+        // Evaluate action rights criteria maps
+        const canWrite = (myCurrentRole !== ROLES.VISITOR);
+        
+        msgInput.disabled = !canWrite;
+        sendBtn.disabled = !canWrite;
+        
+        if (canWrite) {
+            msgInput.placeholder = "Message room...";
+            mediaLabel.style.pointerEvents = "auto";
+            mediaLabel.style.opacity = "1";
+        } else {
+            msgInput.placeholder = "You are a visitor. View only...";
+            mediaLabel.style.pointerEvents = "none";
+            mediaLabel.style.opacity = "0.4";
+        }
+
+        renderUserDirectory();
+    }
+
+    function renderUserDirectory() {
+        const container = document.getElementById('user-list-box');
+        container.innerHTML = '';
+
+        Object.values(activeUsersMap).forEach(user => {
+            const isMe = user.id === drone.clientId;
+            const row = document.createElement('div');
+            row.className = 'user-row';
+
+            // Check if client has permission to invite others
+            const canInvite = (myCurrentRole === ROLES.OWNER || myCurrentRole === ROLES.MODERATOR || myCurrentRole === ROLES.MEMBER);
+            const displayCodeTag = canInvite ? `<span style="font-size:10px; color:var(--text-muted);">ID: ${user.id.substring(0,4)}</span>` : '';
+
+            let actionButtonsHTML = '';
+            
+            // Build dynamic control items for Owner and Moderator layers
+            if (!isMe) {
+                if (myCurrentRole === ROLES.OWNER) {
+                    if (user.role !== ROLES.MODERATOR) {
+                        actionButtonsHTML += `<button class="action-mini-btn" onclick="changeUserRole('${user.id}', '${ROLES.MODERATOR}')">+Mod</button>`;
+                    } else {
+                        actionButtonsHTML += `<button class="action-mini-btn danger-action" onclick="changeUserRole('${user.id}', '${ROLES.VISITOR}')">-Mod</button>`;
+                    }
+                    if (user.role !== ROLES.MEMBER) {
+                        actionButtonsHTML += `<button class="action-mini-btn" onclick="changeUserRole('${user.id}', '${ROLES.MEMBER}')">+Member</button>`;
+                    }
+                    actionButtonsHTML += `<button class="action-mini-btn danger-action" onclick="banUser('${user.id}')">Ban</button>`;
+                } 
+                else if (myCurrentRole === ROLES.MODERATOR && user.role !== ROLES.OWNER && user.role !== ROLES.MODERATOR) {
+                    if (user.role !== ROLES.MEMBER) {
+                        actionButtonsHTML += `<button class="action-mini-btn" onclick="changeUserRole('${user.id}', '${ROLES.MEMBER}')">+Member</button>`;
+                    }
+                    actionButtonsHTML += `<button class="action-mini-btn danger-action" onclick="banUser('${user.id}')">Ban</button>`;
+                }
+            }
+
+            row.innerHTML = `
+                <div class="user-row-meta">
+                    <span style="font-weight:600; color:${isMe ? '#a5b4fc' : 'inherit'}">${user.name} ${isMe ? '(You)' : ''}</span>
+                    <span class="badge ${user.role}">${user.role}</span>
+                </div>
+                ${displayCodeTag}
+                <div class="user-row-actions">${actionButtonsHTML}</div>
+            `;
+            container.appendChild(row);
+        });
+    }
+
+    function changeUserRole(targetClientId, newRoleName) {
+        drone.publish({
+            room: roomName,
+            message: { systemSignal: { type: 'ALTER_ROLE', targetId: targetClientId, newRole: newRoleName } }
+        });
+    }
+
+    function banUser(targetClientId) {
+        if (confirm("Are you sure you want to ban this user from the room?")) {
+            drone.publish({
+                room: roomName,
+                message: { systemSignal: { type: 'BAN_USER', targetId: targetClientId } }
+            });
+        }
+    }
+
+    function sendMessage() {
+        if (myCurrentRole === ROLES.VISITOR) return;
+        const msgInput = document.getElementById('message-input');
+        const text = msgInput.value.trim();
+        if (text === '') return;
+        drone.publish({ room: roomName, message: { text: text } });
+        msgInput.value = '';
+    }
+
     function handleMediaUpload(event) {
+        if (myCurrentRole === ROLES.VISITOR) {
+            alert("Visitors aren't permitted to distribute attachments.");
+            return;
+        }
         const file = event.target.files[0];
         if (!file) return;
 
-        // FIXED: Enforce a strict 4MB file limit to protect Scaledrone's packet constraints
         const MAX_VIDEO_SIZE = 4 * 1024 * 1024; 
         if (file.size > MAX_VIDEO_SIZE) {
-            alert(`This video file is too large (${(file.size / (1024 * 1024)).toFixed(1)}MB). Please choose a shorter clip or compressed video under 4MB to send directly.`);
+            alert(`This video file is too large. Keep media uploads under 4MB.`);
             event.target.value = '';
             return;
         }
@@ -623,10 +661,7 @@
         if (file.type.startsWith('video/')) {
             const reader = new FileReader();
             reader.onload = function(e) {
-                drone.publish({
-                    room: roomName,
-                    message: { text: '', video: e.target.result }
-                });
+                drone.publish({ room: roomName, message: { text: '', video: e.target.result } });
             };
             reader.readAsDataURL(file);
         } else {
@@ -635,89 +670,33 @@
                 const img = new Image();
                 img.onload = function() {
                     const canvas = document.createElement('canvas');
-                    let width = img.width;
-                    let height = img.height;
+                    let width = img.width; let height = img.height;
                     const max_size = 800;
-
-                    if (width > height) {
-                        if (width > max_size) { height *= max_size / width; width = max_size; }
-                    } else {
-                        if (height > max_size) { width *= max_size / height; height = max_size; }
-                    }
-
-                    canvas.width = width;
-                    canvas.height = height;
+                    if (width > height) { if (width > max_size) { height *= max_size / width; width = max_size; } } 
+                    else { if (height > max_size) { width *= max_size / height; height = max_size; } }
+                    canvas.width = width; canvas.height = height;
                     const ctx = canvas.getContext('2d');
                     ctx.drawImage(img, 0, 0, width, height);
-
-                    const base64Data = canvas.toDataURL('image/jpeg', 0.7);
-                    drone.publish({
-                        room: roomName,
-                        message: { text: '', image: base64Data }
-                    });
+                    drone.publish({ room: roomName, message: { text: '', image: canvas.toDataURL('image/jpeg', 0.7) } });
                 };
                 img.src = e.target.result;
             };
             reader.readAsDataURL(file);
         }
-        
         event.target.value = '';
     }
 
-    function mobileNotificationCondition() {
-        const msgDiv = document.getElementById('messages');
-        return (msgDiv.scrollHeight - msgDiv.scrollTop - msgDiv.clientHeight > 150);
-    }
-
-    function triggerSystemNotification(sender, messageText) {
-        if ('Notification' in window && Notification.permission === 'granted') {
-            new Notification(`${sender} inside ${currentCustomRoomName}`, {
-                body: messageText,
-                tag: 'chat-msg'
-            });
-        }
-    }
-
-    function showPreviewToast(sender, text) {
-        clearTimeout(toastTimeout);
-        document.getElementById('toast-sender').innerText = `Message from ${sender} (${currentCustomRoomName})`;
-        document.getElementById('toast-text').innerText = text;
-        
-        const toast = document.getElementById('chat-notification-toast');
-        toast.classList.add('show');
-
-        toastTimeout = setTimeout(() => {
-            toast.classList.remove('show');
-        }, 5000);
-    }
-
-    function dismissNotification() {
-        document.getElementById('chat-notification-toast').classList.remove('show');
-    }
-
-    function sendMessage() {
-        const msgInput = document.getElementById('message-input');
-        const text = msgInput.value.trim();
-        if (text === '') return;
-        drone.publish({ room: roomName, message: { text: text } });
-        msgInput.value = '';
-    }
-
-    function extractHostname(url) {
-        try {
-            const parsed = new URL(url);
-            return parsed.hostname.replace('www.', '');
-        } catch(e) {
-            return "Visit External Site";
-        }
-    }
-
-    function displayMessage(text, sender, isLocal, base64Image = null, base64Video = null) {
+    function displayMessage(text, sender, isLocal, senderRole, base64Image = null, base64Video = null) {
         const messagesDiv = document.getElementById('messages');
         const messageWrapper = document.createElement('div');
         messageWrapper.classList.add('message', isLocal ? 'local' : 'remote');
         
-        let messageHTML = `<div class="message-sender">${sender}</div>`;
+        let messageHTML = `
+            <div class="message-sender">
+                <span>${sender}</span>
+                <span class="badge ${senderRole}">${senderRole}</span>
+            </div>
+        `;
         
         const urlRegex = /(https?:\/\/[^\s]+)/g;
 
@@ -725,7 +704,6 @@
             if (urlRegex.test(text)) {
                 const matchedUrl = text.match(urlRegex)[0];
                 const siteName = extractHostname(matchedUrl);
-                
                 messageHTML += `
                     <div style="margin-bottom: 4px;">${text.replace(matchedUrl, '')}</div>
                     <a href="${matchedUrl}" target="_blank" rel="noopener noreferrer" class="link-preview-card">
@@ -734,23 +712,19 @@
                         <div class="link-preview-url">${matchedUrl}</div>
                     </a>
                 `;
-            } else {
-                messageHTML += `<div>${text}</div>`;
-            }
+            } else { messageHTML += `<div>${text}</div>`; }
         }
         
-        if (base64Image) {
-            messageHTML += `<img src="${base64Image}" class="shared-chat-image" alt="Shared image node" onclick="window.open(this.src)">`;
-        }
-
-        // FIXED: Added basic attributes to ensure video playback elements work reliably across browsers
-        if (base64Video) {
-            messageHTML += `<video src="${base64Video}" class="shared-chat-video" controls loop playsinline preload="metadata"></video>`;
-        }
+        if (base64Image) messageHTML += `<img src="${base64Image}" class="shared-chat-image" alt="Shared image node" onclick="window.open(this.src)">`;
+        if (base64Video) messageHTML += `<video src="${base64Video}" class="shared-chat-video" controls loop playsinline preload="metadata"></video>`;
         
         messageWrapper.innerHTML = messageHTML;
         messagesDiv.appendChild(messageWrapper);
         messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    }
+
+    function extractHostname(url) {
+        try { return new URL(url).hostname.replace('www.', ''); } catch(e) { return "Visit External Site"; }
     }
 
     function leaveRoom() {
@@ -759,6 +733,8 @@
         document.getElementById('messages').innerHTML = '';
         document.getElementById('chat-view').style.display = 'none';
         document.getElementById('login-view').style.display = 'block';
+        activeUsersMap = {};
+        myCurrentRole = ROLES.VISITOR;
         displaySavedRooms();
     }
 
