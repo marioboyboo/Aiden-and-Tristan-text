@@ -442,7 +442,6 @@
         saveRoomData(roomCode, currentCustomRoomName, username);
         roomName = 'observable-' + roomCode;
 
-        // Pass initialization metadata payload parameters to channel pipeline
         drone = new Scaledrone(CLIENT_ID, { data: { name: username, initialRole: ROLES.VISITOR } });
 
         drone.on('open', error => {
@@ -457,9 +456,8 @@
     function setupRoom() {
         room = drone.subscribe(roomName, { historyCount: 30 });
 
-        // Listen for user synchronization handshakes inside structural membership lists
         room.on('members', members => {
-            // Rule: If you are the first entity entering an empty stream, you claim Owner privileges automatically
+            // If you are the first entity entering an empty stream, you claim Owner privileges automatically
             if (members.length === 1) {
                 myCurrentRole = ROLES.OWNER;
             }
@@ -472,13 +470,15 @@
                 };
             });
             
-            // Sync roles down stream to balance connection properties across systems
             broadcastSystemHandshake();
             updateInterfacePermissions();
         });
 
         room.on('member_join', member => {
             activeUsersMap[member.id] = { id: member.id, name: member.clientData.name, role: ROLES.VISITOR };
+            
+            // FIX: Only the Owner or a Moderator broadcasts the state update.
+            // This prevents a freshly joined visitor from overwriting existing room states.
             if (myCurrentRole === ROLES.OWNER || myCurrentRole === ROLES.MODERATOR) {
                 broadcastSystemHandshake(); 
             }
@@ -491,9 +491,8 @@
         });
 
         room.on('message', message => {
-            const { data, member, id } = message;
+            const { data, member } = message;
             
-            // Process specialized core background system orchestration signals
             if (data.systemSignal) {
                 handleSystemSignal(data.systemSignal);
                 return;
@@ -507,7 +506,6 @@
         });
     }
 
-    // Handles administrative network calls behind the scenes
     function broadcastSystemHandshake() {
         if (!drone) return;
         drone.publish({
@@ -518,14 +516,19 @@
 
     function handleSystemSignal(signal) {
         if (signal.type === 'SYNC_ROLES') {
-            // Merge states, respecting the structural updates pushed by Owners/Mods
             Object.keys(signal.rolesState).forEach(clientId => {
                 if (activeUsersMap[clientId]) {
+                    // FIX: Prevent overwriting the room's Owner status.
+                    // If a client is already established as Owner, do not let an incoming sync downgrade them.
+                    if (activeUsersMap[clientId].role === ROLES.OWNER && signal.rolesState[clientId].role !== ROLES.OWNER) {
+                        return; 
+                    }
                     activeUsersMap[clientId].role = signal.rolesState[clientId].role;
                 }
             });
-            if (signal.rolesState[drone.clientId]) {
-                myCurrentRole = signal.rolesState[drone.clientId].role;
+            
+            if (activeUsersMap[drone.clientId]) {
+                myCurrentRole = activeUsersMap[drone.clientId].role;
             }
             updateInterfacePermissions();
         } 
@@ -542,7 +545,6 @@
         }
     }
 
-    // Updates interface interactions depending on permissions level
     function updateInterfacePermissions() {
         const msgInput = document.getElementById('message-input');
         const sendBtn = document.getElementById('send-msg-btn');
@@ -551,7 +553,6 @@
 
         userTitle.innerText = `As ${username} (${myCurrentRole.toUpperCase()})`;
 
-        // Evaluate action rights criteria maps
         const canWrite = (myCurrentRole !== ROLES.VISITOR);
         
         msgInput.disabled = !canWrite;
@@ -579,13 +580,11 @@
             const row = document.createElement('div');
             row.className = 'user-row';
 
-            // Check if client has permission to invite others
             const canInvite = (myCurrentRole === ROLES.OWNER || myCurrentRole === ROLES.MODERATOR || myCurrentRole === ROLES.MEMBER);
             const displayCodeTag = canInvite ? `<span style="font-size:10px; color:var(--text-muted);">ID: ${user.id.substring(0,4)}</span>` : '';
 
             let actionButtonsHTML = '';
             
-            // Build dynamic control items for Owner and Moderator layers
             if (!isMe) {
                 if (myCurrentRole === ROLES.OWNER) {
                     if (user.role !== ROLES.MODERATOR) {
@@ -784,7 +783,9 @@
         } else { section.style.display = 'none'; }
     }
 
-    function checkEnter(event) { if (event.key === 'Enter') sendMessage(); }
+    function checkEnter(event) { 
+        if (event.key === 'Enter') sendMessage(); 
+    }
 </script>
 </body>
 </html>
