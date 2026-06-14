@@ -206,6 +206,53 @@
         .shared-chat-image { cursor: pointer; transition: opacity 0.2s; }
         .shared-chat-image:hover { opacity: 0.9; }
 
+        /* URL Link Preview Card Styles */
+        .link-preview-card {
+            display: block;
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 12px;
+            margin-top: 6px;
+            text-decoration: none;
+            color: inherit;
+            transition: background 0.2s, border-color 0.2s;
+        }
+        .link-preview-card:hover {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: var(--accent);
+        }
+        .link-preview-title {
+            font-size: 12px;
+            font-weight: 700;
+            color: #a5b4fc;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 2px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .message.remote .link-preview-title {
+            color: #818cf8;
+        }
+        .link-preview-name {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-main);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .link-preview-url {
+            font-size: 11px;
+            color: var(--text-muted);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-top: 2px;
+        }
+
         .chat-input-area { display: flex; gap: 8px; align-items: center; }
         .chat-input-area input { margin: 0; flex: 1; }
         
@@ -408,16 +455,14 @@
     let room = null;
     let currentCustomRoomName = '';
     let toastTimeout = null;
-    let audioCtx = null; // Fixed: Context is left uninitialized until the user explicitly hits a button
+    let audioCtx = null;
 
-    // Safe initialization for the Audio API to prevent early startup browser locks
     function initAudioContext() {
         if (!audioCtx) {
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         }
     }
 
-    // Direct Event Listener Bindings (Much more reliable than inline HTML tags)
     document.getElementById('floating-dl-btn').addEventListener('click', () => {
         document.getElementById('download-overlay').classList.add('open');
     });
@@ -431,15 +476,14 @@
     });
 
     document.getElementById('download-tile-content').addEventListener('click', (event) => {
-        event.stopPropagation(); // Prevents clicking inside the window from closing it
+        event.stopPropagation();
     });
 
     document.getElementById('start-exe-dl').addEventListener('click', () => {
-        // Change "ChatApp.exe" below to your exact file name or full web address when ready
         const targetFile = "ChatApp.exe"; 
         
         if (targetFile === "" || targetFile === "#") {
-            alert("Setup Notice: Update the 'targetFile' variable in the script to link your real app downoad!");
+            alert("Setup Notice: Update the 'targetFile' variable in the script to link your real app download!");
         } else {
             const link = document.createElement('a');
             link.href = targetFile;
@@ -650,6 +694,16 @@
         msgInput.value = '';
     }
 
+    // NEW: Helper function to extract cleanly readable destination hostnames
+    function extractHostname(url) {
+        try {
+            const parsed = new URL(url);
+            return parsed.hostname.replace('www.', '');
+        } catch(e) {
+            return "Visit External Site";
+        }
+    }
+
     function displayMessage(text, sender, isLocal, base64Image = null, base64Video = null) {
         const messagesDiv = document.getElementById('messages');
         const messageWrapper = document.createElement('div');
@@ -657,8 +711,27 @@
         
         let messageHTML = `<div class="message-sender">${sender}</div>`;
         
+        // NEW: URL Regex Pattern matcher targeting raw link strings
+        const urlRegex = /(https?:\/\/[^\s]+)/g;
+
         if (text) {
-            messageHTML += `<div>${text}</div>`;
+            if (urlRegex.test(text)) {
+                // If text matches a URL pattern, convert it to a structured tile element block
+                const matchedUrl = text.match(urlRegex)[0];
+                const siteName = extractHostname(matchedUrl);
+                
+                messageHTML += `
+                    <div style="margin-bottom: 4px;">${text.replace(matchedUrl, '')}</div>
+                    <a href="${matchedUrl}" target="_blank" rel="noopener noreferrer" class="link-preview-card">
+                        <div class="link-preview-title">🔗 External Link</div>
+                        <div class="link-preview-name">${siteName}</div>
+                        <div class="link-preview-url">${matchedUrl}</div>
+                    </a>
+                `;
+            } else {
+                // Render standard prose messages normal way if no URLs detected
+                messageHTML += `<div>${text}</div>`;
+            }
         }
         
         if (base64Image) {
