@@ -607,9 +607,18 @@
         });
     }
 
+    // UPDATED: Added a size check to handle large files smoothly
     function handleMediaUpload(event) {
         const file = event.target.files[0];
         if (!file) return;
+
+        // FIXED: Enforce a strict 4MB file limit to protect Scaledrone's packet constraints
+        const MAX_VIDEO_SIZE = 4 * 1024 * 1024; 
+        if (file.size > MAX_VIDEO_SIZE) {
+            alert(`This video file is too large (${(file.size / (1024 * 1024)).toFixed(1)}MB). Please choose a shorter clip or compressed video under 4MB to send directly.`);
+            event.target.value = '';
+            return;
+        }
 
         if (file.type.startsWith('video/')) {
             const reader = new FileReader();
@@ -694,7 +703,6 @@
         msgInput.value = '';
     }
 
-    // NEW: Helper function to extract cleanly readable destination hostnames
     function extractHostname(url) {
         try {
             const parsed = new URL(url);
@@ -711,12 +719,10 @@
         
         let messageHTML = `<div class="message-sender">${sender}</div>`;
         
-        // NEW: URL Regex Pattern matcher targeting raw link strings
         const urlRegex = /(https?:\/\/[^\s]+)/g;
 
         if (text) {
             if (urlRegex.test(text)) {
-                // If text matches a URL pattern, convert it to a structured tile element block
                 const matchedUrl = text.match(urlRegex)[0];
                 const siteName = extractHostname(matchedUrl);
                 
@@ -729,7 +735,6 @@
                     </a>
                 `;
             } else {
-                // Render standard prose messages normal way if no URLs detected
                 messageHTML += `<div>${text}</div>`;
             }
         }
@@ -738,8 +743,9 @@
             messageHTML += `<img src="${base64Image}" class="shared-chat-image" alt="Shared image node" onclick="window.open(this.src)">`;
         }
 
+        // FIXED: Added basic attributes to ensure video playback elements work reliably across browsers
         if (base64Video) {
-            messageHTML += `<video src="${base64Video}" class="shared-chat-video" controls loops playsinline></video>`;
+            messageHTML += `<video src="${base64Video}" class="shared-chat-video" controls loop playsinline preload="metadata"></video>`;
         }
         
         messageWrapper.innerHTML = messageHTML;
